@@ -14,6 +14,7 @@ a more user-friendly way.
 
 import argparse
 import sys
+import torch
 
 from isaaclab.app import AppLauncher
 
@@ -189,6 +190,17 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agen
 
     # run training
     runner.run()
+    best_model_path = os.path.join(log_dir, "best_model_bundle.pt")
+    
+    checkpoint = {
+        "observation_space": env.observation_space,
+        "action_space": env.action_space,
+        "model_cfg": agent_cfg["models"]["policy"],  # save architecture details
+        "state_dict": runner.agent.policy.state_dict()
+    }
+
+    torch.save(checkpoint, best_model_path)
+
 
     # close the simulator
     env.close()

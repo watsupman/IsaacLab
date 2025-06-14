@@ -89,7 +89,8 @@ class QuadcopterEnvCfg(DirectRLEnvCfg):
 
     # robot
     robot: ArticulationCfg = CRAZYFLIE_CFG.replace(prim_path="/World/envs/env_.*/Robot")
-    thrust_to_weight = 1.9
+    # thrust_to_weight = 1.9
+    thrust_to_weight = 20.7
     moment_scale = 0.01
 
     # reward scales
