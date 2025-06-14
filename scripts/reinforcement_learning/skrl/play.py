@@ -46,6 +46,8 @@ parser.add_argument(
     help="The RL algorithm used for training the skrl agent.",
 )
 parser.add_argument("--real-time", action="store_true", default=False, help="Run in real-time, if possible.")
+parser.add_argument("--goal_pos", type=float, nargs=3, help="Custom goal position (x y z)")
+parser.add_argument("--start_pos", type=float, nargs=3, help="Custom starting position (x y z)")
 
 # append AppLauncher cli args
 AppLauncher.add_app_launcher_args(parser)
@@ -134,6 +136,16 @@ def main():
     # convert to single-agent instance if required by the RL algorithm
     if isinstance(env.unwrapped, DirectMARLEnv) and algorithm in ["ppo"]:
         env = multi_agent_to_single_agent(env)
+
+    # Set goal/start positions
+    if args_cli.goal_pos:
+        goal_tensor = torch.tensor(args_cli.goal_pos, dtype=torch.float32)
+        env.unwrapped.set_custom_goal(goal_tensor)
+        print(f"[INFO] Using custom GOAL position: {args_cli.goal_pos}")
+    if args_cli.start_pos:
+        start_tensor = torch.tensor(args_cli.start_pos, dtype=torch.float32)
+        env.unwrapped.set_custom_start(start_tensor)
+        print(f"[INFO] Using custom START position: {args_cli.start_pos}")
 
     # get environment (physics) dt for real-time evaluation
     try:
