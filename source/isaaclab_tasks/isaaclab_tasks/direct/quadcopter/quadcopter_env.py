@@ -105,6 +105,8 @@ class QuadcopterEnvCfg(DirectRLEnvCfg):
     thrust_to_weight = 20.7
     moment_scale = 0.01
 
+    distance_threshold = 0.2
+
     # reward scales
     lin_vel_reward_scale = -0.05
     ang_vel_reward_scale = -0.01
@@ -130,6 +132,9 @@ class QuadcopterEnv(DirectRLEnv):
         self._desired_pos_w = torch.zeros(self.num_envs, 3, device=self.device)
         self._custom_goal = None
         self._custom_start = None
+        self._goal_sequence = None
+        self._goal_idx = torch.zeros(self.num_envs, dtype=torch.long, device=self.device)
+
 
         # Logging
         self._episode_sums = {
@@ -146,6 +151,8 @@ class QuadcopterEnv(DirectRLEnv):
         self._robot_mass = self._robot.root_physx_view.get_masses()[0].sum()
         self._gravity_magnitude = torch.tensor(self.sim.cfg.gravity, device=self.device).norm()
         self._robot_weight = (self._robot_mass * self._gravity_magnitude).item()
+
+        print(f"Payload ID: {self._robot.find_bodies('payload')[0]}")
 
         # add handle for debug visualization (this is set to a valid handle inside set_debug_vis)
         self.set_debug_vis(self.cfg.debug_vis)
@@ -195,8 +202,8 @@ class QuadcopterEnv(DirectRLEnv):
             self._desired_pos_w
         )
         if self._payload_id is not None:
-            payload_pos_w = self._robot.data.body_pos_w[:, self._payload_id]
-            payload_vel_w = self._robot.data.body_lin_vel_w[:, self._payload_id]
+            payload_pos_w = self._robot.data.body_pos_w[:, self._payload_id, :]
+            payload_vel_w = self._robot.data.body_lin_vel_w[:, self._payload_id, :]
             relative_payload_pos_b, _ = subtract_frame_transforms(
                 quad_pos_w, quad_quat_w, payload_pos_w
             )
@@ -232,6 +239,14 @@ class QuadcopterEnv(DirectRLEnv):
         # Logging
         for key, value in rewards.items():
             self._episode_sums[key] += value
+
+        if self._goal_sequence is not None and self._custom_goal is None:
+            goal_reached = torch.norm(self._desired_pos_w - self._robot.data.root_pos_w, dim=1) < self.cfg.distance_threshold
+            for i in range(self.num_envs):
+                if goal_reached[i]:
+                    self._goal_idx[i] = (self._goal_idx[i] + 1) % len(self._goal_sequence)
+                    self._desired_pos_w[i] = self._goal_sequence[self._goal_idx[i]]
+
         return reward
 
     def _get_dones(self) -> tuple[torch.Tensor, torch.Tensor]:
@@ -255,6 +270,9 @@ class QuadcopterEnv(DirectRLEnv):
         # Custom or random goal
         if self._custom_goal is not None:
             self._desired_pos_w[env_ids] = self._custom_goal.expand(len(env_ids), -1)
+        elif self._goal_sequence is not None:
+            self._goal_idx[env_ids] = 0
+            self._desired_pos_w[env_ids] = self._goal_sequence[self._goal_idx[env_ids]].expand(len(env_ids), -1)
         else:
             self._desired_pos_w[env_ids, :2] = torch.zeros_like(self._desired_pos_w[env_ids, :2]).uniform_(-2.0, 2.0)
             self._desired_pos_w[env_ids, :2] += self._terrain.env_origins[env_ids, :2]
@@ -292,3 +310,7 @@ class QuadcopterEnv(DirectRLEnv):
         # update the markers
         self.goal_pos_visualizer.visualize(self._desired_pos_w)
 
+    def set_goal_sequence(self, goal_list: list[torch.Tensor]):
+        self._goal_sequence = [g.to(self.device) for g in goal_list]
+        self._goal_idx = torch.zeros(self.num_envs, dtype=torch.long, device=self.device)
+        self._desired_pos_w = torch.stack([g for g in goal_list[:self.num_envs]]).to(self.device)

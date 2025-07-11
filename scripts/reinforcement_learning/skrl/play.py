@@ -48,6 +48,7 @@ parser.add_argument(
 parser.add_argument("--real-time", action="store_true", default=False, help="Run in real-time, if possible.")
 parser.add_argument("--goal_pos", type=float, nargs=3, help="Custom goal position (x y z)")
 parser.add_argument("--start_pos", type=float, nargs=3, help="Custom starting position (x y z)")
+parser.add_argument("--goal_sequence", action="store_true", default=False, help="Use a sequence of goals.")
 
 # append AppLauncher cli args
 AppLauncher.add_app_launcher_args(parser)
@@ -66,6 +67,7 @@ import gymnasium as gym
 import os
 import time
 import torch
+import math
 
 import skrl
 from packaging import version
@@ -147,6 +149,24 @@ def main():
         env.unwrapped.set_custom_start(start_tensor)
         print(f"[INFO] Using custom START position: {args_cli.start_pos}")
 
+    if args_cli.goal_sequence:
+        goal_sequence = [
+            torch.tensor([0.0, 0.0, 2.0], dtype=torch.float32),
+            torch.tensor([1.0, 0.0, 2.0], dtype=torch.float32),
+            torch.tensor([1.0, 1.0, 2.0], dtype=torch.float32),
+            torch.tensor([0.0, 1.0, 2.0], dtype=torch.float32),
+        ]
+        # goal_sequence = generate_trajectory(
+        #     path_type="circle",  # "circle", "sine", or "line"
+        #     num_points=100,  # number of waypoints in the trajectory
+        #     radius=1.0,  # radius for circle or line length
+        #     center=(0.0, 0.0, 2),  # center point for circle or line start point
+        #     amplitude=0.5,  # amplitude for sine wave
+        #     frequency=1.0,  # frequency for sine wave
+        # )
+        env.unwrapped.set_goal_sequence(goal_sequence)
+        print(f"[INFO] Using FIXED GOAL SEQUENCE with {len(goal_sequence)} waypoints")
+
     # get environment (physics) dt for real-time evaluation
     try:
         dt = env.physics_dt
@@ -212,6 +232,35 @@ def main():
 
     # close the simulator
     env.close()
+
+
+def generate_trajectory(path_type="circle", num_points=100, radius=1.0, center=(0.0, 0.0, 1.5), amplitude=0.5, frequency=1.0):
+    points = []
+
+    if path_type == "circle":
+        for i in range(num_points):
+            angle = 2 * math.pi * i / num_points
+            x = center[0] + radius * math.cos(angle)
+            y = center[1] + radius * math.sin(angle)
+            z = center[2]
+            points.append(torch.tensor([x, y, z], dtype=torch.float32))
+
+    elif path_type == "sine":
+        for i in range(num_points):
+            x = i * 2 * math.pi / num_points
+            y = amplitude * math.sin(frequency * x)
+            z = center[2]
+            points.append(torch.tensor([x + center[0], y + center[1], z], dtype=torch.float32))
+
+    elif path_type == "line":
+        for i in range(num_points):
+            alpha = i / (num_points - 1)
+            x = center[0] + alpha * radius
+            y = center[1]
+            z = center[2]
+            points.append(torch.tensor([x, y, z], dtype=torch.float32))
+
+    return points
 
 
 if __name__ == "__main__":
