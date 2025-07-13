@@ -49,6 +49,7 @@ parser.add_argument("--real-time", action="store_true", default=False, help="Run
 parser.add_argument("--goal_pos", type=float, nargs=3, help="Custom goal position (x y z)")
 parser.add_argument("--start_pos", type=float, nargs=3, help="Custom starting position (x y z)")
 parser.add_argument("--goal_sequence", action="store_true", default=False, help="Use a sequence of goals.")
+parser.add_argument("--log_data", action="store_true", default=False, help="Log data during play.")
 
 # append AppLauncher cli args
 AppLauncher.add_app_launcher_args(parser)
@@ -151,21 +152,31 @@ def main():
 
     if args_cli.goal_sequence:
         goal_sequence = [
-            torch.tensor([0.0, 0.0, 2.0], dtype=torch.float32),
-            torch.tensor([1.0, 0.0, 2.0], dtype=torch.float32),
+            # torch.tensor([0.0, 0.0, 2.0], dtype=torch.float32),
             torch.tensor([1.0, 1.0, 2.0], dtype=torch.float32),
-            torch.tensor([0.0, 1.0, 2.0], dtype=torch.float32),
+            # torch.tensor([1.0, 1.0, 2.0], dtype=torch.float32),
+            torch.tensor([0.0, 2.0, 2.0], dtype=torch.float32),
+            torch.tensor([1.0, 3.0, 2.0], dtype=torch.float32),
+            torch.tensor([0.0, 4.0, 2.0], dtype=torch.float32),
+            torch.tensor([1.0, 3.0, 2.0], dtype=torch.float32),
+            torch.tensor([0.0, 2.0, 2.0], dtype=torch.float32),
+            torch.tensor([1.0, 1.0, 2.0], dtype=torch.float32),
         ]
         # goal_sequence = generate_trajectory(
-        #     path_type="circle",  # "circle", "sine", or "line"
-        #     num_points=100,  # number of waypoints in the trajectory
+        #     path_type="sawtooth",  # "circle", "sine", "sawtooth"
+        #     num_points=4,  # number of waypoints in the trajectory
         #     radius=1.0,  # radius for circle or line length
         #     center=(0.0, 0.0, 2),  # center point for circle or line start point
-        #     amplitude=0.5,  # amplitude for sine wave
-        #     frequency=1.0,  # frequency for sine wave
+        #     amplitude=2,  # amplitude for sine wave
+        #     frequency=7,  # frequency for sine wave
         # )
         env.unwrapped.set_goal_sequence(goal_sequence)
         print(f"[INFO] Using FIXED GOAL SEQUENCE with {len(goal_sequence)} waypoints")
+
+    if args_cli.log_data:
+        payload_log = []
+        num_envs = args_cli.num_envs
+        episode_counts = [0 for _ in range(num_envs)]
 
     # get environment (physics) dt for real-time evaluation
     try:
@@ -184,6 +195,8 @@ def main():
         print("[INFO] Recording videos during training.")
         print_dict(video_kwargs, nesting=4)
         env = gym.wrappers.RecordVideo(env, **video_kwargs)
+
+    
 
     # wrap around environment for skrl
     env = SkrlVecEnvWrapper(env, ml_framework=args_cli.ml_framework)  # same as: `wrap_env(env, wrapper="auto")`
@@ -218,7 +231,31 @@ def main():
             else:
                 actions = outputs[-1].get("mean_actions", outputs[0])
             # env stepping
-            obs, _, _, _, _ = env.step(actions)
+            # obs, _, _, _, _ = env.step(actions)
+            obs, _, terminated, truncated, _ = env.step(actions)
+            if args_cli.log_data:
+                dones = torch.logical_or(terminated, truncated)
+                relative_payload_pos ,relative_payload_vel = env.unwrapped.get_payload_state()
+                distance_to_goal = torch.norm(
+                    env.unwrapped._desired_pos_w - env.unwrapped._robot.data.root_pos_w, dim=1
+                )
+                for i in range(num_envs):
+                    # Mark episode transition
+                    if dones[i]:
+                        episode_counts[i] += 1
+
+                    payload_log.append({
+                        "timestep": timestep,
+                        "env_id": i,
+                        "episode": episode_counts[i],
+                        "rel_pos_x": relative_payload_pos[i][0].cpu().item(),
+                        "rel_pos_y": relative_payload_pos[i][1].cpu().item(),
+                        "rel_pos_z": relative_payload_pos[i][2].cpu().item(),
+                        "rel_vel_x": relative_payload_vel[i][0].cpu().item(),
+                        "rel_vel_y": relative_payload_vel[i][1].cpu().item(),
+                        "rel_vel_z": relative_payload_vel[i][2].cpu().item(),
+                        "dist_to_goal": distance_to_goal[i].cpu().item(),
+                    })
         if args_cli.video:
             timestep += 1
             # exit the play loop after recording one video
@@ -230,11 +267,20 @@ def main():
         if args_cli.real_time and sleep_time > 0:
             time.sleep(sleep_time)
 
+    if args_cli.log_data and payload_log:
+        # save payload log to a file
+        import pandas as pd
+
+        payload_df = pd.DataFrame(payload_log)
+        payload_log_path = os.path.join(log_dir, "payload_log.csv")
+        payload_df.to_csv(payload_log_path, index=False)
+        print(f"[INFO] Payload log saved to: {payload_log_path}")
+
     # close the simulator
     env.close()
 
 
-def generate_trajectory(path_type="circle", num_points=100, radius=1.0, center=(0.0, 0.0, 1.5), amplitude=0.5, frequency=1.0):
+def generate_trajectory(path_type="circle", num_points=100, radius=1.0, center=(0.0, 0.0, 2), amplitude=0.5, frequency=1.0):
     points = []
 
     if path_type == "circle":
@@ -257,6 +303,12 @@ def generate_trajectory(path_type="circle", num_points=100, radius=1.0, center=(
             alpha = i / (num_points - 1)
             x = center[0] + alpha * radius
             y = center[1]
+            z = center[2]
+            points.append(torch.tensor([x, y, z], dtype=torch.float32))
+    elif path_type == "sawtooth":
+        for i in range(num_points):
+            x = center[0] + (amplitude if i % 2 == 0 else -amplitude)
+            y = center[1] + i  # Move up by 1m per step
             z = center[2]
             points.append(torch.tensor([x, y, z], dtype=torch.float32))
 

@@ -55,15 +55,16 @@ class QuadcopterEnvWindow(BaseEnvWindow):
 class QuadcopterEnvCfg(DirectRLEnvCfg):
     # env
     trajectory: bool = False
-    payload: bool = False
-    future_traj_steps: int = 10
-    traj_freq: float = 1.0
-    traj_amp: tuple = (1.0, 1.0, 0.5)
+    payload: bool = True
+    payload_aware: bool = False
 
-    episode_length_s: float = 10.0
+    episode_length_s: float = 20.0
     decimation: int = 2
     action_space: int = 4
-    observation_space: int = 18
+    if payload_aware:
+        observation_space: int = 18
+    else:
+        observation_space: int = 12
     state_space: int = 0
     debug_vis: bool = True
 
@@ -147,12 +148,10 @@ class QuadcopterEnv(DirectRLEnv):
         }
         # Get specific body indices
         self._body_id = self._robot.find_bodies("body")[0]
-        self._payload_id = self._robot.find_bodies("payload")[0] if self.cfg.payload else None
+        self._payload_id = int(self._robot.find_bodies("payload")[0][0]) if self.cfg.payload else None
         self._robot_mass = self._robot.root_physx_view.get_masses()[0].sum()
         self._gravity_magnitude = torch.tensor(self.sim.cfg.gravity, device=self.device).norm()
         self._robot_weight = (self._robot_mass * self._gravity_magnitude).item()
-
-        print(f"Payload ID: {self._robot.find_bodies('payload')[0]}")
 
         # add handle for debug visualization (this is set to a valid handle inside set_debug_vis)
         self.set_debug_vis(self.cfg.debug_vis)
@@ -208,17 +207,22 @@ class QuadcopterEnv(DirectRLEnv):
                 quad_pos_w, quad_quat_w, payload_pos_w
             )
             relative_payload_vel_b = payload_vel_w - self._robot.data.root_lin_vel_w
+        if self.cfg.payload_aware and self._payload_id is not None:
+            obs = torch.cat([
+                self._robot.data.root_lin_vel_b,
+                self._robot.data.root_ang_vel_b,
+                self._robot.data.projected_gravity_b,
+                desired_pos_b,
+                relative_payload_pos_b,
+                relative_payload_vel_b,
+            ], dim=-1)
         else:
-            relative_payload_pos_b = torch.zeros((self.num_envs, 3), device=self.device)
-            relative_payload_vel_b = torch.zeros((self.num_envs, 3), device=self.device)
-        obs = torch.cat([
-            self._robot.data.root_lin_vel_b,
-            self._robot.data.root_ang_vel_b,
-            self._robot.data.projected_gravity_b,
-            desired_pos_b,
-            relative_payload_pos_b,
-            relative_payload_vel_b,
-        ], dim=-1)
+                obs = torch.cat([
+                self._robot.data.root_lin_vel_b,
+                self._robot.data.root_ang_vel_b,
+                self._robot.data.projected_gravity_b,
+                desired_pos_b,
+            ], dim=-1)
         observations = {"policy": obs}
         return observations
 
@@ -314,3 +318,16 @@ class QuadcopterEnv(DirectRLEnv):
         self._goal_sequence = [g.to(self.device) for g in goal_list]
         self._goal_idx = torch.zeros(self.num_envs, dtype=torch.long, device=self.device)
         self._desired_pos_w = torch.stack([g for g in goal_list[:self.num_envs]]).to(self.device)
+
+    def get_payload_state(self):
+        if self._payload_id is None:
+            return None
+        pos = self._robot.data.body_pos_w[:, self._payload_id, :]
+        vel = self._robot.data.body_lin_vel_w[:, self._payload_id, :]
+        quad_pos_w = self._robot.data.root_state_w[:, :3]
+        quad_quat_w = self._robot.data.root_state_w[:, 3:7]
+        relative_payload_pos_b, _ = subtract_frame_transforms(
+            quad_pos_w, quad_quat_w, pos
+        )
+        relative_payload_vel_b = vel - self._robot.data.root_lin_vel_w
+        return relative_payload_pos_b, relative_payload_vel_b
