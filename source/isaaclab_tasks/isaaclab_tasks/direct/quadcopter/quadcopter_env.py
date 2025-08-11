@@ -54,11 +54,10 @@ class QuadcopterEnvWindow(BaseEnvWindow):
 @configclass
 class QuadcopterEnvCfg(DirectRLEnvCfg):
     # env
-    trajectory: bool = False
-    payload: bool = True
+    payload: bool = False
     payload_aware: bool = False
 
-    episode_length_s: float = 20.0
+    episode_length_s: float = 10.0
     decimation: int = 2
     action_space: int = 4
     if payload_aware:
@@ -100,10 +99,10 @@ class QuadcopterEnvCfg(DirectRLEnvCfg):
     scene: InteractiveSceneCfg = InteractiveSceneCfg(num_envs=4096, env_spacing=2.5, replicate_physics=True)
 
     # robot
-    robot: ArticulationCfg = DRONE_WITH_PAYLOAD_CFG.replace(prim_path="/World/envs/env_.*/Robot")
-    # robot: ArticulationCfg = CRAZYFLIE_CFG.replace(prim_path="/World/envs/env_.*/Robot")
+    # robot: ArticulationCfg = DRONE_WITH_PAYLOAD_CFG.replace(prim_path="/World/envs/env_.*/Robot")
+    robot: ArticulationCfg = CRAZYFLIE_CFG.replace(prim_path="/World/envs/env_.*/Robot")
     # thrust_to_weight = 1.9
-    thrust_to_weight = 20.7
+    thrust_to_weight = 3.8
     moment_scale = 0.01
 
     distance_threshold = 0.2
@@ -111,11 +110,10 @@ class QuadcopterEnvCfg(DirectRLEnvCfg):
     # reward scales
     lin_vel_reward_scale = -0.05
     ang_vel_reward_scale = -0.01
-    distance_to_goal_reward_scale_fixed = 15.0
-    distance_to_goal_reward_scale_traj = 15.0
+    z_offset_penalty_scale = -15.0
+    distance_to_goal_reward_scale = 15.0
 
-    distance_normalizer_fixed = 0.8
-    distance_normalizer_traj = 0.5
+    distance_normalizer = 0.8
 
 
 class QuadcopterEnv(DirectRLEnv):
@@ -127,6 +125,7 @@ class QuadcopterEnv(DirectRLEnv):
 
         # Total thrust and moment applied to the base of the quadcopter
         self._actions = torch.zeros(self.num_envs, gym.spaces.flatdim(self.single_action_space), device=self.device)
+        
         self._thrust = torch.zeros(self.num_envs, 1, 3, device=self.device)
         self._moment = torch.zeros(self.num_envs, 1, 3, device=self.device)
         # Goal position
@@ -228,8 +227,8 @@ class QuadcopterEnv(DirectRLEnv):
 
     def _get_rewards(self) -> torch.Tensor:
         distance_to_goal = torch.linalg.norm(self._desired_pos_w - self._robot.data.root_pos_w, dim=1)
-        distance_reward = 1.0 - torch.tanh(distance_to_goal / self.cfg.distance_normalizer_fixed)
-        distance_scale = self.cfg.distance_to_goal_reward_scale_fixed
+        distance_reward = 1.0 - torch.tanh(distance_to_goal / self.cfg.distance_normalizer)
+        distance_scale = self.cfg.distance_to_goal_reward_scale
         
         lin_vel = torch.sum(torch.square(self._robot.data.root_lin_vel_b), dim=1)
         ang_vel = torch.sum(torch.square(self._robot.data.root_ang_vel_b), dim=1)
@@ -237,7 +236,7 @@ class QuadcopterEnv(DirectRLEnv):
         rewards = {
             "tracking": distance_reward * distance_scale * self.step_dt,
             "lin_vel": lin_vel * self.cfg.lin_vel_reward_scale * self.step_dt,
-            "ang_vel": ang_vel * self.cfg.ang_vel_reward_scale * self.step_dt
+            "ang_vel": ang_vel * self.cfg.ang_vel_reward_scale * self.step_dt,
         }
         reward = torch.sum(torch.stack(list(rewards.values())), dim=0)
         # Logging

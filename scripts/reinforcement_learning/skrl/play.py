@@ -212,9 +212,10 @@ def main():
     runner.agent.load(resume_path)
     # set agent to evaluation mode
     runner.agent.set_running_mode("eval")
-
+    
     # reset environment
     obs, _ = env.reset()
+    obsCount = 0
     timestep = 0
     # simulate environment
     while simulation_app.is_running():
@@ -233,6 +234,10 @@ def main():
             # env stepping
             # obs, _, _, _, _ = env.step(actions)
             obs, _, terminated, truncated, _ = env.step(actions)
+            if obsCount < 4:
+                obsCount += 1
+                print(f"Obs {obsCount}: {obs[0].cpu().numpy().round(3)}")
+                print(f"Actions: {actions[0].cpu().numpy().round(3)}")
             if args_cli.log_data:
                 dones = torch.logical_or(terminated, truncated)
                 relative_payload_pos ,relative_payload_vel = env.unwrapped.get_payload_state()
