@@ -217,6 +217,7 @@ def main():
     obs, _ = env.reset()
     obsCount = 0
     timestep = 0
+    has_payload = getattr(env.unwrapped.cfg, "payload", False)
     # simulate environment
     while simulation_app.is_running():
         start_time = time.time()
@@ -240,7 +241,8 @@ def main():
                 print(f"Actions: {actions[0].cpu().numpy().round(3)}")
             if args_cli.log_data:
                 dones = torch.logical_or(terminated, truncated)
-                relative_payload_pos ,relative_payload_vel = env.unwrapped.get_payload_state()
+                if has_payload:
+                    relative_payload_pos ,relative_payload_vel = env.unwrapped.get_payload_state()
                 distance_to_goal = torch.norm(
                     env.unwrapped._desired_pos_w - env.unwrapped._robot.data.root_pos_w, dim=1
                 )
@@ -253,14 +255,21 @@ def main():
                         "timestep": timestep,
                         "env_id": i,
                         "episode": episode_counts[i],
-                        "rel_pos_x": relative_payload_pos[i][0].cpu().item(),
-                        "rel_pos_y": relative_payload_pos[i][1].cpu().item(),
-                        "rel_pos_z": relative_payload_pos[i][2].cpu().item(),
-                        "rel_vel_x": relative_payload_vel[i][0].cpu().item(),
-                        "rel_vel_y": relative_payload_vel[i][1].cpu().item(),
-                        "rel_vel_z": relative_payload_vel[i][2].cpu().item(),
                         "dist_to_goal": distance_to_goal[i].cpu().item(),
+                        "thrust":    actions[i, 0].item(),
+                        "tau_roll":  actions[i, 1].item(),
+                        "tau_pitch": actions[i, 2].item(),
+                        "tau_yaw":   actions[i, 3].item(),
                     })
+                    if has_payload:
+                        payload_log.append({
+                            "rel_pos_x": relative_payload_pos[i][0].cpu().item(),
+                            "rel_pos_y": relative_payload_pos[i][1].cpu().item(),
+                            "rel_pos_z": relative_payload_pos[i][2].cpu().item(),
+                            "rel_vel_x": relative_payload_vel[i][0].cpu().item(),
+                            "rel_vel_y": relative_payload_vel[i][1].cpu().item(),
+                            "rel_vel_z": relative_payload_vel[i][2].cpu().item(),
+                        })
         if args_cli.video:
             timestep += 1
             # exit the play loop after recording one video

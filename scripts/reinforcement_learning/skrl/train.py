@@ -195,7 +195,7 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agen
     checkpoint = {
         "observation_space": env.observation_space,
         "action_space": env.action_space,
-        "model_cfg": agent_cfg["models"]["policy"],  # save architecture details
+        "model_cfg": agent_cfg["models"]["policy"],
         "state_dict": runner.agent.policy.state_dict()
     }
 

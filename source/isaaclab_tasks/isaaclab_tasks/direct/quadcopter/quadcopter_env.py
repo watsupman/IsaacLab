@@ -19,6 +19,7 @@ from isaaclab.terrains import TerrainImporterCfg
 from isaaclab.utils import configclass
 from isaaclab.utils.math import subtract_frame_transforms
 
+
 import isaacsim.core.utils.prims as prim_utils
 import omni.physx.scripts.utils as script_utils
 import omni.usd
@@ -61,9 +62,9 @@ class QuadcopterEnvCfg(DirectRLEnvCfg):
     decimation: int = 2
     action_space: int = 4
     if payload_aware:
-        observation_space: int = 18
+        observation_space: int = 25
     else:
-        observation_space: int = 12
+        observation_space: int = 19
     state_space: int = 0
     debug_vis: bool = True
 
@@ -99,8 +100,10 @@ class QuadcopterEnvCfg(DirectRLEnvCfg):
     scene: InteractiveSceneCfg = InteractiveSceneCfg(num_envs=4096, env_spacing=2.5, replicate_physics=True)
 
     # robot
-    # robot: ArticulationCfg = DRONE_WITH_PAYLOAD_CFG.replace(prim_path="/World/envs/env_.*/Robot")
-    robot: ArticulationCfg = CRAZYFLIE_CFG.replace(prim_path="/World/envs/env_.*/Robot")
+    if payload:
+        robot: ArticulationCfg = DRONE_WITH_PAYLOAD_CFG.replace(prim_path="/World/envs/env_.*/Robot")
+    else:
+        robot: ArticulationCfg = CRAZYFLIE_CFG.replace(prim_path="/World/envs/env_.*/Robot")
     # thrust_to_weight = 1.9
     thrust_to_weight = 3.8
     moment_scale = 0.01
@@ -112,6 +115,8 @@ class QuadcopterEnvCfg(DirectRLEnvCfg):
     ang_vel_reward_scale = -0.01
     z_offset_penalty_scale = -15.0
     distance_to_goal_reward_scale = 15.0
+    orientation_penalty_scale = -0.2
+    action_smoothness_penalty_scale = -0.2
 
     distance_normalizer = 0.8
 
@@ -125,11 +130,13 @@ class QuadcopterEnv(DirectRLEnv):
 
         # Total thrust and moment applied to the base of the quadcopter
         self._actions = torch.zeros(self.num_envs, gym.spaces.flatdim(self.single_action_space), device=self.device)
+        self._prev_actions = torch.zeros_like(self._actions)
         
         self._thrust = torch.zeros(self.num_envs, 1, 3, device=self.device)
         self._moment = torch.zeros(self.num_envs, 1, 3, device=self.device)
         # Goal position
         self._desired_pos_w = torch.zeros(self.num_envs, 3, device=self.device)
+        self._desired_yaw = torch.zeros(self.num_envs, device=self.device)
         self._custom_goal = None
         self._custom_start = None
         self._goal_sequence = None
@@ -143,6 +150,8 @@ class QuadcopterEnv(DirectRLEnv):
                 "tracking",
                 "lin_vel",
                 "ang_vel",
+                "orientation",
+                "action_smoothness",
             ]
         }
         # Get specific body indices
@@ -177,7 +186,7 @@ class QuadcopterEnv(DirectRLEnv):
         light_cfg.func("/World/Light", light_cfg)
 
     def _pre_physics_step(self, actions: torch.Tensor):
-
+        self._prev_actions = self._actions.clone()
         self._actions = actions.clone().clamp(-1.0, 1.0)
         self._thrust[:, 0, 2] = self.cfg.thrust_to_weight * self._robot_weight * (self._actions[:, 0] + 1.0) / 2.0
         self._moment[:, 0, :] = self.cfg.moment_scale * self._actions[:, 1:]
@@ -199,6 +208,13 @@ class QuadcopterEnv(DirectRLEnv):
             quad_quat_w,
             self._desired_pos_w
         )
+        q = quad_quat_w  # [x, y, z, w]
+        x, y, z, w = q.unbind(-1)
+        curr_yaw = torch.atan2(2.0 * (w * z + x * y), 1.0 - 2.0 * (y * y + z * z))
+        yaw_err = torch.atan2(torch.sin(curr_yaw - self._desired_yaw),
+                            torch.cos(curr_yaw - self._desired_yaw))
+        heading_error = torch.stack([torch.sin(yaw_err), torch.cos(yaw_err)], dim=-1)
+        
         if self._payload_id is not None:
             payload_pos_w = self._robot.data.body_pos_w[:, self._payload_id, :]
             payload_vel_w = self._robot.data.body_lin_vel_w[:, self._payload_id, :]
@@ -210,8 +226,11 @@ class QuadcopterEnv(DirectRLEnv):
             obs = torch.cat([
                 self._robot.data.root_lin_vel_b,
                 self._robot.data.root_ang_vel_b,
-                self._robot.data.projected_gravity_b,
+                quad_quat_w,
+                # self._robot.data.projected_gravity_b,
                 desired_pos_b,
+                heading_error,
+                self._prev_actions, 
                 relative_payload_pos_b,
                 relative_payload_vel_b,
             ], dim=-1)
@@ -219,8 +238,11 @@ class QuadcopterEnv(DirectRLEnv):
                 obs = torch.cat([
                 self._robot.data.root_lin_vel_b,
                 self._robot.data.root_ang_vel_b,
-                self._robot.data.projected_gravity_b,
+                quad_quat_w,
+                # self._robot.data.projected_gravity_b,
                 desired_pos_b,
+                heading_error,
+                self._prev_actions,
             ], dim=-1)
         observations = {"policy": obs}
         return observations
@@ -233,10 +255,27 @@ class QuadcopterEnv(DirectRLEnv):
         lin_vel = torch.sum(torch.square(self._robot.data.root_lin_vel_b), dim=1)
         ang_vel = torch.sum(torch.square(self._robot.data.root_ang_vel_b), dim=1)
 
+        q = self._robot.data.root_state_w[:, 3:7]  # [x,y,z,w]
+        x, y, z, w = q.unbind(-1)
+        curr_yaw = torch.atan2(2.0 * (w * z + x * y), 1.0 - 2.0 * (y * y + z * z))
+
+        yaw_err = torch.atan2(torch.sin(curr_yaw - self._desired_yaw),
+                            torch.cos(curr_yaw - self._desired_yaw))
+
+        heading_pen = (1 - torch.cos(yaw_err)) * self.cfg.orientation_penalty_scale * self.step_dt
+
+        action_diff = self._actions - self._prev_actions
+        action_rate = torch.mean(action_diff * action_diff, dim=1)
+        action_smooth_penalty = (
+            action_rate * self.cfg.action_smoothness_penalty_scale * self.step_dt
+        )
+
         rewards = {
             "tracking": distance_reward * distance_scale * self.step_dt,
             "lin_vel": lin_vel * self.cfg.lin_vel_reward_scale * self.step_dt,
             "ang_vel": ang_vel * self.cfg.ang_vel_reward_scale * self.step_dt,
+            "orientation": heading_pen,
+            "action_smoothness": action_smooth_penalty,
         }
         reward = torch.sum(torch.stack(list(rewards.values())), dim=0)
         # Logging
@@ -269,6 +308,7 @@ class QuadcopterEnv(DirectRLEnv):
             self.episode_length_buf = torch.randint_like(self.episode_length_buf, high=int(self.max_episode_length))
 
         self._actions[env_ids] = 0.0
+        self._prev_actions[env_ids] = 0.0
 
         # Custom or random goal
         if self._custom_goal is not None:
@@ -280,6 +320,8 @@ class QuadcopterEnv(DirectRLEnv):
             self._desired_pos_w[env_ids, :2] = torch.zeros_like(self._desired_pos_w[env_ids, :2]).uniform_(-2.0, 2.0)
             self._desired_pos_w[env_ids, :2] += self._terrain.env_origins[env_ids, :2]
             self._desired_pos_w[env_ids, 2] = torch.zeros_like(self._desired_pos_w[env_ids, 2]).uniform_(0.5, 1.5)
+        
+        self._desired_yaw[env_ids] = 0.0
 
         # Custom or default starting position
         joint_pos = self._robot.data.default_joint_pos[env_ids]
