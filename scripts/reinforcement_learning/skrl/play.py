@@ -252,9 +252,14 @@ def main():
                         episode_counts[i] += 1
 
                     payload_log.append({
-                        "timestep": timestep,
                         "env_id": i,
                         "episode": episode_counts[i],
+                        "lin_vel_x": obs[i, 0].item(), # Make sure to update indexes if observation space changes
+                        "lin_vel_y": obs[i, 1].item(), # Make sure to update indexes if observation space changes
+                        "lin_vel_z": obs[i, 2].item(), # Make sure to update indexes if observation space changes
+                        "ang_vel_roll": obs[i, 3].item(), # Make sure to update indexes if observation space changes
+                        "ang_vel_pitch": obs[i, 4].item(), # Make sure to update indexes if observation space changes
+                        "ang_vel_yaw": obs[i, 5].item(), # Make sure to update indexes if observation space changes
                         "dist_to_goal": distance_to_goal[i].cpu().item(),
                         "thrust":    actions[i, 0].item(),
                         "tau_roll":  actions[i, 1].item(),

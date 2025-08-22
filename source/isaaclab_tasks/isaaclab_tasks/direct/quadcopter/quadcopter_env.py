@@ -179,7 +179,6 @@ class QuadcopterEnv(DirectRLEnv):
         self._terrain = self.cfg.terrain.class_type(self.cfg.terrain)
         # clone and replicate
         self.scene.clone_environments(copy_from_source=False)
-
     
         # add lights
         light_cfg = sim_utils.DomeLightCfg(intensity=2000.0, color=(0.75, 0.75, 0.75))
@@ -227,7 +226,6 @@ class QuadcopterEnv(DirectRLEnv):
                 self._robot.data.root_lin_vel_b,
                 self._robot.data.root_ang_vel_b,
                 quad_quat_w,
-                # self._robot.data.projected_gravity_b,
                 desired_pos_b,
                 heading_error,
                 self._prev_actions, 
@@ -239,7 +237,6 @@ class QuadcopterEnv(DirectRLEnv):
                 self._robot.data.root_lin_vel_b,
                 self._robot.data.root_ang_vel_b,
                 quad_quat_w,
-                # self._robot.data.projected_gravity_b,
                 desired_pos_b,
                 heading_error,
                 self._prev_actions,
@@ -332,6 +329,8 @@ class QuadcopterEnv(DirectRLEnv):
         else:
             default_root_state[:, :3] += self._terrain.env_origins[env_ids]
 
+        default_root_state[:, 10:13] = 0.0
+        
         self._robot.write_root_pose_to_sim(default_root_state[:, :7], env_ids)
         self._robot.write_root_velocity_to_sim(default_root_state[:, 7:], env_ids)
         self._robot.write_joint_state_to_sim(joint_pos, joint_vel, None, env_ids)
