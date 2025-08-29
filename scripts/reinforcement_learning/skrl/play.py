@@ -234,11 +234,9 @@ def main():
                 actions = outputs[-1].get("mean_actions", outputs[0])
             # env stepping
             # obs, _, _, _, _ = env.step(actions)
+            pre_dict = env.unwrapped._get_observations()
+            preObs   = pre_dict["policy"]
             obs, _, terminated, truncated, _ = env.step(actions)
-            if obsCount < 4:
-                obsCount += 1
-                print(f"Obs {obsCount}: {obs[0].cpu().numpy().round(3)}")
-                print(f"Actions: {actions[0].cpu().numpy().round(3)}")
             if args_cli.log_data:
                 dones = torch.logical_or(terminated, truncated)
                 if has_payload:
@@ -254,12 +252,18 @@ def main():
                     payload_log.append({
                         "env_id": i,
                         "episode": episode_counts[i],
-                        "lin_vel_x": obs[i, 0].item(), # Make sure to update indexes if observation space changes
-                        "lin_vel_y": obs[i, 1].item(), # Make sure to update indexes if observation space changes
-                        "lin_vel_z": obs[i, 2].item(), # Make sure to update indexes if observation space changes
-                        "ang_vel_roll": obs[i, 3].item(), # Make sure to update indexes if observation space changes
-                        "ang_vel_pitch": obs[i, 4].item(), # Make sure to update indexes if observation space changes
-                        "ang_vel_yaw": obs[i, 5].item(), # Make sure to update indexes if observation space changes
+                        # "lin_vel_x": obs[i, 0].item(), # Make sure to update indexes if observation space changes
+                        # "lin_vel_y": obs[i, 1].item(), # Make sure to update indexes if observation space changes
+                        # "lin_vel_z": obs[i, 2].item(), # Make sure to update indexes if observation space changes
+                        # "ang_vel_roll": obs[i, 3].item(), # Make sure to update indexes if observation space changes
+                        # "ang_vel_pitch": obs[i, 4].item(), # Make sure to update indexes if observation space changes
+                        # "ang_vel_yaw": obs[i, 5].item(), # Make sure to update indexes if observation space changes
+                        "lin_vel_x": preObs[i, 0].item(), # Make sure to update indexes if observation space changes
+                        "lin_vel_y": preObs[i, 1].item(), # Make sure to update indexes if observation space changes
+                        "lin_vel_z": preObs[i, 2].item(), # Make sure to update indexes if observation space changes
+                        "ang_vel_roll": preObs[i, 3].item(), # Make sure to update indexes if observation space changes
+                        "ang_vel_pitch": preObs[i, 4].item(), # Make sure to update indexes if observation space changes
+                        "ang_vel_yaw": preObs[i, 5].item(), # Make sure to update indexes if observation space changes
                         "dist_to_goal": distance_to_goal[i].cpu().item(),
                         "thrust":    actions[i, 0].item(),
                         "tau_roll":  actions[i, 1].item(),
