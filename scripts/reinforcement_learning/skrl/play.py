@@ -249,29 +249,23 @@ def main():
                     if dones[i]:
                         episode_counts[i] += 1
 
-                    payload_log.append({
+                    row = {
                         "env_id": i,
                         "episode": episode_counts[i],
-                        # "lin_vel_x": obs[i, 0].item(), # Make sure to update indexes if observation space changes
-                        # "lin_vel_y": obs[i, 1].item(), # Make sure to update indexes if observation space changes
-                        # "lin_vel_z": obs[i, 2].item(), # Make sure to update indexes if observation space changes
-                        # "ang_vel_roll": obs[i, 3].item(), # Make sure to update indexes if observation space changes
-                        # "ang_vel_pitch": obs[i, 4].item(), # Make sure to update indexes if observation space changes
-                        # "ang_vel_yaw": obs[i, 5].item(), # Make sure to update indexes if observation space changes
-                        "lin_vel_x": preObs[i, 0].item(), # Make sure to update indexes if observation space changes
-                        "lin_vel_y": preObs[i, 1].item(), # Make sure to update indexes if observation space changes
-                        "lin_vel_z": preObs[i, 2].item(), # Make sure to update indexes if observation space changes
-                        "ang_vel_roll": preObs[i, 3].item(), # Make sure to update indexes if observation space changes
-                        "ang_vel_pitch": preObs[i, 4].item(), # Make sure to update indexes if observation space changes
-                        "ang_vel_yaw": preObs[i, 5].item(), # Make sure to update indexes if observation space changes
+                        "lin_vel_x": preObs[i, 0].item(),
+                        "lin_vel_y": preObs[i, 1].item(),
+                        "lin_vel_z": preObs[i, 2].item(),
+                        "ang_vel_roll": preObs[i, 3].item(),
+                        "ang_vel_pitch": preObs[i, 4].item(),
+                        "ang_vel_yaw": preObs[i, 5].item(),
                         "dist_to_goal": distance_to_goal[i].cpu().item(),
-                        "thrust":    actions[i, 0].item(),
-                        "tau_roll":  actions[i, 1].item(),
+                        "thrust": actions[i, 0].item(),
+                        "tau_roll": actions[i, 1].item(),
                         "tau_pitch": actions[i, 2].item(),
-                        "tau_yaw":   actions[i, 3].item(),
-                    })
+                        "tau_yaw": actions[i, 3].item(),
+                    }
                     if has_payload:
-                        payload_log.append({
+                        row.update({
                             "rel_pos_x": relative_payload_pos[i][0].cpu().item(),
                             "rel_pos_y": relative_payload_pos[i][1].cpu().item(),
                             "rel_pos_z": relative_payload_pos[i][2].cpu().item(),
@@ -279,6 +273,7 @@ def main():
                             "rel_vel_y": relative_payload_vel[i][1].cpu().item(),
                             "rel_vel_z": relative_payload_vel[i][2].cpu().item(),
                         })
+                    payload_log.append(row)
         if args_cli.video:
             timestep += 1
             # exit the play loop after recording one video
