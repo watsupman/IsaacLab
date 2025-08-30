@@ -55,8 +55,8 @@ class QuadcopterEnvWindow(BaseEnvWindow):
 @configclass
 class QuadcopterEnvCfg(DirectRLEnvCfg):
     # env
-    payload: bool = False
-    payload_aware: bool = False
+    payload: bool = True
+    payload_aware: bool = True
 
     episode_length_s: float = 10.0
     decimation: int = 2
@@ -116,7 +116,10 @@ class QuadcopterEnvCfg(DirectRLEnvCfg):
     z_offset_penalty_scale = -15.0
     distance_to_goal_reward_scale = 15.0
     orientation_penalty_scale = -0.2
-    action_smoothness_penalty_scale = -0.2
+    thrust_smoothness_penalty_scale: float = -0.2
+    roll_smoothness_penalty_scale: float   = -0.1
+    pitch_smoothness_penalty_scale: float  = -0.1
+    yaw_smoothness_penalty_scale: float    = -0.1
 
     distance_normalizer = 0.8
 
@@ -151,7 +154,10 @@ class QuadcopterEnv(DirectRLEnv):
                 "lin_vel",
                 "ang_vel",
                 "orientation",
-                "action_smoothness",
+                "thrust_smoothness",
+                "roll_smoothness",
+                "pitch_smoothness",
+                "yaw_smoothness",
             ]
         }
         # Get specific body indices
@@ -262,17 +268,26 @@ class QuadcopterEnv(DirectRLEnv):
         heading_pen = (1 - torch.cos(yaw_err)) * self.cfg.orientation_penalty_scale * self.step_dt
 
         action_diff = self._actions - self._prev_actions
-        action_rate = torch.mean(action_diff * action_diff, dim=1)
-        action_smooth_penalty = (
-            action_rate * self.cfg.action_smoothness_penalty_scale * self.step_dt
-        )
+        thrust_rate = action_diff[:, 0] ** 2
+        roll_rate   = action_diff[:, 1] ** 2
+        pitch_rate  = action_diff[:, 2] ** 2
+        yaw_rate    = action_diff[:, 3] ** 2
+
+        thrust_smooth_penalty = thrust_rate * self.cfg.thrust_smoothness_penalty_scale * self.step_dt
+        roll_smooth_penalty   = roll_rate   * self.cfg.roll_smoothness_penalty_scale   * self.step_dt
+        pitch_smooth_penalty  = pitch_rate  * self.cfg.pitch_smoothness_penalty_scale  * self.step_dt
+        yaw_smooth_penalty    = yaw_rate    * self.cfg.yaw_smoothness_penalty_scale    * self.step_dt
+
 
         rewards = {
             "tracking": distance_reward * distance_scale * self.step_dt,
             "lin_vel": lin_vel * self.cfg.lin_vel_reward_scale * self.step_dt,
             "ang_vel": ang_vel * self.cfg.ang_vel_reward_scale * self.step_dt,
             "orientation": heading_pen,
-            "action_smoothness": action_smooth_penalty,
+            "thrust_smoothness": thrust_smooth_penalty,
+            "roll_smoothness": roll_smooth_penalty,
+            "pitch_smoothness": pitch_smooth_penalty,
+            "yaw_smoothness": yaw_smooth_penalty,
         }
         reward = torch.sum(torch.stack(list(rewards.values())), dim=0)
         # Logging
