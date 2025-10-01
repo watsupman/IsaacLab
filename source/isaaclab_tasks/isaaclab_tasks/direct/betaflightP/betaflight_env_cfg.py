@@ -120,7 +120,6 @@ DRONE_WITH_PAYLOAD_CFG = ArticulationCfg(
     },
 )
 
-
 class BetaflightEnvWindow(BaseEnvWindow):
     """Window manager for the Quadcopter environment."""
 
@@ -144,10 +143,10 @@ class BetaflightEnvWindow(BaseEnvWindow):
 
 @configclass
 class BetaflightEnvCfg(DirectRLEnvCfg):
+
+    payload = True
+
     # env
-
-    payload = False
-
     episode_length_s = 10.0
     decimation = 2
     action_space = 4
@@ -204,9 +203,6 @@ class BetaflightEnvCfg(DirectRLEnvCfg):
             init_state=CUSTOM_DRONE_CFG.init_state,
             actuators=CUSTOM_DRONE_CFG.actuators,
         )
-
-    # robot
-    
     moment_scale = 0.1
 
     # Angular velocity control parameters
@@ -227,6 +223,7 @@ class BetaflightEnvCfg(DirectRLEnvCfg):
     # reward scales
     lin_vel_reward_scale = -0.05
     ang_vel_reward_scale = -0.01
+    z_offset_penalty_scale = -1.0
     distance_to_goal_reward_scale = 10.0
     orientation_penalty_scale = -0.2
     thrust_smoothness_penalty_scale: float = -0.2
@@ -234,9 +231,6 @@ class BetaflightEnvCfg(DirectRLEnvCfg):
     pitch_smoothness_penalty_scale: float  = -0.1
     yaw_smoothness_penalty_scale: float    = -0.1
 
-    # payload_vel_penalty_scale: float = -0.15     # penalize payload relative speed
-    # payload_deflection_penalty_scale: float = -0.1  # penalize payload displacement
-    # payload_oscillation_penalty_scale: float = -0.05 # penalize changes in displacement (swing)
 
     distance_normalizer = 0.8
 

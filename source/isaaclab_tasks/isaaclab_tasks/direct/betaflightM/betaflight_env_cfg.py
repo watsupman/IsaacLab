@@ -80,46 +80,6 @@ CUSTOM_DRONE_CFG = ArticulationCfg(
     },
 )
 
-# Define custom drone with payload configuration
-DRONE_WITH_PAYLOAD_CFG = ArticulationCfg(
-    prim_path="{ENV_REGEX_NS}/Robot",
-    spawn=sim_utils.UsdFileCfg(
-        usd_path=os.path.join(os.path.dirname(__file__), "drone_with_payload.usda"),
-        rigid_props=sim_utils.RigidBodyPropertiesCfg(
-            disable_gravity=False,
-            max_depenetration_velocity=10.0,
-            enable_gyroscopic_forces=True,
-        ),
-        articulation_props=sim_utils.ArticulationRootPropertiesCfg(
-            enabled_self_collisions=False,
-            solver_position_iteration_count=4,
-            solver_velocity_iteration_count=0,
-            sleep_threshold=0.005,
-            stabilization_threshold=0.001,
-        ),
-        copy_from_source=False,
-    ),
-    init_state=ArticulationCfg.InitialStateCfg(
-        pos=(0.0, 0.0, 0.5),
-        joint_pos={
-            ".*": 0.0,
-        },
-        joint_vel={
-            "m1_joint": 200.0,
-            "m2_joint": -200.0,
-            "m3_joint": 200.0,
-            "m4_joint": -200.0,
-        },
-    ),
-    actuators={
-        "dummy": ImplicitActuatorCfg(
-            joint_names_expr=[".*"],
-            stiffness=0.0,
-            damping=0.0,
-        ),
-    },
-)
-
 
 class BetaflightEnvWindow(BaseEnvWindow):
     """Window manager for the Quadcopter environment."""
@@ -145,16 +105,10 @@ class BetaflightEnvWindow(BaseEnvWindow):
 @configclass
 class BetaflightEnvCfg(DirectRLEnvCfg):
     # env
-
-    payload = False
-
     episode_length_s = 10.0
     decimation = 2
     action_space = 4
-    if payload:
-        observation_space = 25
-    else:
-        observation_space = 19
+    observation_space = 19
     state_space = 0
     debug_vis = True
 
@@ -190,29 +144,17 @@ class BetaflightEnvCfg(DirectRLEnvCfg):
     scene: InteractiveSceneCfg = InteractiveSceneCfg(num_envs=4096, env_spacing=2.5, replicate_physics=True)
 
     # robot
-    if payload:
-        robot: ArticulationCfg = ArticulationCfg(
-            prim_path="/World/envs/env_.*/Robot",
-            spawn=DRONE_WITH_PAYLOAD_CFG.spawn,
-            init_state=DRONE_WITH_PAYLOAD_CFG.init_state,
-            actuators=DRONE_WITH_PAYLOAD_CFG.actuators,
-        )
-    else:
-        robot: ArticulationCfg = ArticulationCfg(
-            prim_path="/World/envs/env_.*/Robot",
-            spawn=CUSTOM_DRONE_CFG.spawn,
-            init_state=CUSTOM_DRONE_CFG.init_state,
-            actuators=CUSTOM_DRONE_CFG.actuators,
-        )
-
-    # robot
-    
+    robot: ArticulationCfg = ArticulationCfg(
+        prim_path="/World/envs/env_.*/Robot",
+        spawn=CUSTOM_DRONE_CFG.spawn,
+        init_state=CUSTOM_DRONE_CFG.init_state,
+        actuators=CUSTOM_DRONE_CFG.actuators,
+    )
     moment_scale = 0.1
 
     # Angular velocity control parameters
     max_ang_vel_deg_s = 100.0  # Maximum angular velocity in degrees per second
     ang_vel_tau = 0.12  # First-order time constant for angular velocity response
-    thrust_tau = 0.23 # First-order time constant for thrust response
     ang_vel_kp_roll_pitch = 0.1  # Proportional gain for roll and pitch angular velocity control
     ang_vel_kp_yaw = 0.1  # Proportional gain for yaw angular velocity control
 
@@ -227,6 +169,7 @@ class BetaflightEnvCfg(DirectRLEnvCfg):
     # reward scales
     lin_vel_reward_scale = -0.05
     ang_vel_reward_scale = -0.01
+    z_offset_penalty_scale = -1.0
     distance_to_goal_reward_scale = 10.0
     orientation_penalty_scale = -0.2
     thrust_smoothness_penalty_scale: float = -0.2
@@ -234,9 +177,8 @@ class BetaflightEnvCfg(DirectRLEnvCfg):
     pitch_smoothness_penalty_scale: float  = -0.1
     yaw_smoothness_penalty_scale: float    = -0.1
 
-    # payload_vel_penalty_scale: float = -0.15     # penalize payload relative speed
-    # payload_deflection_penalty_scale: float = -0.1  # penalize payload displacement
-    # payload_oscillation_penalty_scale: float = -0.05 # penalize changes in displacement (swing)
+    playback = True
+    thrust_tau = 0.23
 
     distance_normalizer = 0.8
 
