@@ -149,6 +149,10 @@ class BetaflightEnvCfg(DirectRLEnvCfg):
     # env
     episode_length_s = 10.0
     decimation = 2
+    # Control input a0 in [-1, 1] that corresponds to hover (from Betaflight RC mid)
+    hover_input: float = -0.547
+    # Extra gain on thrust if needed (1.0 = none)
+    thrust_gain: float = 1.0
     action_space = 4
     if payload:
         observation_space = 25
@@ -218,21 +222,27 @@ class BetaflightEnvCfg(DirectRLEnvCfg):
     num_motors = 4  # Number of motors on the quadcopter
 
     # reward scales
-    distance_threshold = 0.2
+    distance_threshold: float = 0.2
 
-    # reward scales
-    lin_vel_reward_scale = -0.05
-    ang_vel_reward_scale = -0.01
-    z_offset_penalty_scale = -1.0
-    distance_to_goal_reward_scale = 10.0
-    orientation_penalty_scale = -0.2
+    if payload:
+        # reward scales
+        lin_vel_reward_scale: float = -0.05
+        ang_vel_reward_scale: float = -0.01
+        distance_to_goal_reward_scale: float = 15.0
+        orientation_penalty_scale: float = -0.2
+    else:
+        lin_vel_reward_scale: float = -0.06
+        ang_vel_reward_scale: float = -0.02
+        distance_to_goal_reward_scale: float = 10.0
+        orientation_penalty_scale: float = -0.5
+    
     thrust_smoothness_penalty_scale: float = -0.2
     roll_smoothness_penalty_scale: float   = -0.1
     pitch_smoothness_penalty_scale: float  = -0.1
     yaw_smoothness_penalty_scale: float    = -0.1
 
 
-    distance_normalizer = 0.8
+    distance_normalizer: float = 0.8
 
 
     # Legacy parameters (kept for backward compatibility)

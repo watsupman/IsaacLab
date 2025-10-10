@@ -171,14 +171,14 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, expe
     if args_cli.goal_sequence:
         goal_sequence = [
             # torch.tensor([0.0, 0.0, 2.0], dtype=torch.float32),
-            torch.tensor([1.0, 1.0, 2.0], dtype=torch.float32),
+            torch.tensor([1.0, 1.0, 1.0], dtype=torch.float32),
             # torch.tensor([1.0, 1.0, 2.0], dtype=torch.float32),
-            torch.tensor([0.0, 2.0, 2.0], dtype=torch.float32),
-            torch.tensor([1.0, 3.0, 2.0], dtype=torch.float32),
-            torch.tensor([0.0, 4.0, 2.0], dtype=torch.float32),
-            torch.tensor([1.0, 3.0, 2.0], dtype=torch.float32),
-            torch.tensor([0.0, 2.0, 2.0], dtype=torch.float32),
-            torch.tensor([1.0, 1.0, 2.0], dtype=torch.float32),
+            torch.tensor([0.0, 2.0, 1.0], dtype=torch.float32),
+            torch.tensor([1.0, 3.0, 1.0], dtype=torch.float32),
+            torch.tensor([0.0, 4.0, 1.0], dtype=torch.float32),
+            torch.tensor([1.0, 3.0, 1.0], dtype=torch.float32),
+            torch.tensor([0.0, 2.0, 1.0], dtype=torch.float32),
+            torch.tensor([1.0, 1.0, 1.0], dtype=torch.float32),
         ]
         # goal_sequence = generate_trajectory(
         #     path_type="sawtooth",  # "circle", "sine", "sawtooth"

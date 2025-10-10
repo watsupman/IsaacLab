@@ -116,9 +116,13 @@ class BetaflightEnv(DirectRLEnv):
         # Apply throttle exactly like Gazebo: (msg.channel_2 + 1.0)/2 * 4631
         # where msg.channel_2 is equivalent to self._actions[:, 0] (ranges from -1 to 1)
 
-        force = (self._actions[:, 0] + 1.0) / 2.0 
-        
-        desired_thrust = 38 * force
+        a0 = self._actions[:, 0].clamp(-1.0, 1.0)
+        u = (a0 + 1.0) * 0.5  # map [-1,1] -> [0,1]
+        u_hover = (self.cfg.hover_input + 1.0) * 0.5
+        u_hover = max(u_hover, 1e-3)  # avoid div-by-zero
+        hover_thrust = self._robot_weight  # N
+        scale = hover_thrust / u_hover  # N per unit u so that u=u_hover gives hover
+        desired_thrust = self.cfg.thrust_gain * scale * u
         dt = self.cfg.sim.dt * self.cfg.decimation
         alpha = dt / (self._thrust_tau + dt)
         self._commanded_thrust = (1.0 - alpha) * self._commanded_thrust + alpha * desired_thrust
