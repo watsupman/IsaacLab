@@ -120,6 +120,7 @@ DRONE_WITH_PAYLOAD_CFG = ArticulationCfg(
     },
 )
 
+
 class BetaflightEnvWindow(BaseEnvWindow):
     """Window manager for the Quadcopter environment."""
 
@@ -144,15 +145,23 @@ class BetaflightEnvWindow(BaseEnvWindow):
 @configclass
 class BetaflightEnvCfg(DirectRLEnvCfg):
 
-    payload = False
+    payload = True
+
+    # === Thrust constant randomization (training-only) ===
+    # When is_training=True, each env samples a per-episode thrust constant from a
+    # truncated/clamped Gaussian and uses that for thrust scaling.
+    # On eval (is_training=False), a fixed constant is used.
+    is_training: bool = False  # set False for evaluation/inference
+    thrust_constant_train_only: bool = False
+    thrust_constant_gauss_mean: float = 38.0
+    thrust_constant_gauss_std: float = 1.5  # ~95% within [36, 42] before clamping
+    thrust_constant_clip_min: float = 36.0
+    thrust_constant_clip_max: float = 42.0
+    eval_thrust_constant: float = 38.0
 
     # env
     episode_length_s = 10.0
     decimation = 2
-    # Control input a0 in [-1, 1] that corresponds to hover (from Betaflight RC mid)
-    hover_input: float = -0.547
-    # Extra gain on thrust if needed (1.0 = none)
-    thrust_gain: float = 1.0
     action_space = 4
     if payload:
         observation_space = 25
@@ -212,7 +221,7 @@ class BetaflightEnvCfg(DirectRLEnvCfg):
     # Angular velocity control parameters
     max_ang_vel_deg_s = 100.0  # Maximum angular velocity in degrees per second
     ang_vel_tau = 0.12  # First-order time constant for angular velocity response
-    thrust_tau = 0.23 # First-order time constant for thrust response
+    thrust_tau = 0.18 # First-order time constant for thrust response
     ang_vel_kp_roll_pitch = 0.1  # Proportional gain for roll and pitch angular velocity control
     ang_vel_kp_yaw = 0.1  # Proportional gain for yaw angular velocity control
 
@@ -230,12 +239,20 @@ class BetaflightEnvCfg(DirectRLEnvCfg):
         ang_vel_reward_scale: float = -0.01
         distance_to_goal_reward_scale: float = 15.0
         orientation_penalty_scale: float = -0.2
+        # Payload swing reward (enabled when payload=True)
+        payload_swing_reward_enable: bool = True
+        payload_swing_pos_penalty_scale: float = -2.0
+        payload_swing_vel_penalty_scale: float = -2.5
     else:
-        lin_vel_reward_scale: float = -0.06
+        lin_vel_reward_scale: float = -0.005
         ang_vel_reward_scale: float = -0.02
-        distance_to_goal_reward_scale: float = 10.0
-        orientation_penalty_scale: float = -0.5
-    
+        distance_to_goal_reward_scale: float = 11.0
+        orientation_penalty_scale: float = -0.2
+        # Payload swing reward (disabled when payload=False)
+        payload_swing_reward_enable: bool = False
+        payload_swing_pos_penalty_scale: float = 0.0
+        payload_swing_vel_penalty_scale: float = 0.0
+
     thrust_smoothness_penalty_scale: float = -0.2
     roll_smoothness_penalty_scale: float   = -0.1
     pitch_smoothness_penalty_scale: float  = -0.1
@@ -244,6 +261,10 @@ class BetaflightEnvCfg(DirectRLEnvCfg):
 
     distance_normalizer: float = 0.8
 
+    # Control input a0 in [-1, 1] that corresponds to hover (from Betaflight RC mid)
+    hover_input: float = -0.54
+    # Extra gain on thrust if needed (1.0 = none)
+    thrust_gain: float = 1.0
 
     # Legacy parameters (kept for backward compatibility)
     thrust_ratio = 38.0  # Not used with motor-level thrust calculation
@@ -257,3 +278,5 @@ class BetaflightEnvCfg(DirectRLEnvCfg):
 
 
 
+
+    

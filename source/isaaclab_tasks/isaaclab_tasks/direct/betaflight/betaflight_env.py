@@ -59,9 +59,7 @@ class BetaflightEnv(DirectRLEnv):
         self._prev_actions = torch.zeros_like(self._actions)
 
         # Logging
-        self._episode_sums = {
-            key: torch.zeros(self.num_envs, dtype=torch.float, device=self.device)
-            for key in [
+        keys = [
                 "tracking",
                 "lin_vel",
                 "ang_vel",
@@ -70,8 +68,14 @@ class BetaflightEnv(DirectRLEnv):
                 "roll_smoothness",
                 "pitch_smoothness",
                 "yaw_smoothness",
-                "total_reward",
             ]
+        if getattr(self.cfg, "payload", False) and getattr(self.cfg, "payload_swing_reward_enable", False):
+            keys += ["payload_swing_pos", "payload_swing_vel"]
+        keys += ["total_reward"]
+
+        self._episode_sums = {
+        key: torch.zeros(self.num_envs, dtype=torch.float, device=self.device)
+        for key in keys
         }
         # Get specific body indices
         self._body_id = self._robot.find_bodies("body")[0]
@@ -80,7 +84,12 @@ class BetaflightEnv(DirectRLEnv):
         self._gravity_magnitude = torch.tensor(self.sim.cfg.gravity, device=self.device).norm()
         self._robot_weight = (self._robot_mass * self._gravity_magnitude).item()
 
-        # add handle for debug visualization (this is set to a valid handle inside set_debug_vis)
+        # add handle for debug visualization
+        # Per-env thrust constant (N) used to scale throttle->thrust
+        # Sampled on reset during training; fixed to eval_thrust_constant otherwise.
+        self._thrust_constant = torch.full((self.num_envs,), self.cfg.eval_thrust_constant, device=self.device)
+        self.is_training = self.cfg.is_training
+        # (this is set to a valid handle inside set_debug_vis)
         self.set_debug_vis(self.cfg.debug_vis)
 
     def set_custom_goal(self, goal_tensor):
@@ -116,13 +125,18 @@ class BetaflightEnv(DirectRLEnv):
         # Apply throttle exactly like Gazebo: (msg.channel_2 + 1.0)/2 * 4631
         # where msg.channel_2 is equivalent to self._actions[:, 0] (ranges from -1 to 1)
 
-        a0 = self._actions[:, 0].clamp(-1.0, 1.0)
-        u = (a0 + 1.0) * 0.5  # map [-1,1] -> [0,1]
-        u_hover = (self.cfg.hover_input + 1.0) * 0.5
-        u_hover = max(u_hover, 1e-3)  # avoid div-by-zero
-        hover_thrust = self._robot_weight  # N
-        scale = hover_thrust / u_hover  # N per unit u so that u=u_hover gives hover
-        desired_thrust = self.cfg.thrust_gain * scale * u
+        # a0 = self._actions[:, 0].clamp(-1.0, 1.0)
+        # u = (a0 + 1.0) * 0.5  # map [-1,1] -> [0,1]
+        # u_hover = (self.cfg.hover_input + 1.0) * 0.5
+        # u_hover = max(u_hover, 1e-3)  # avoid div-by-zero
+        # hover_thrust = self._robot_weight  # N
+        # scale = hover_thrust / u_hover  # N per unit u so that u=u_hover gives hover
+        # desired_thrust = self.cfg.thrust_gain * scale * u
+
+        force = (self._actions[:, 0] + 1.0) / 2.0 
+        
+        desired_thrust = self._thrust_constant * force
+
         dt = self.cfg.sim.dt * self.cfg.decimation
         alpha = dt / (self._thrust_tau + dt)
         self._commanded_thrust = (1.0 - alpha) * self._commanded_thrust + alpha * desired_thrust
@@ -257,6 +271,18 @@ class BetaflightEnv(DirectRLEnv):
             "yaw_smoothness": yaw_smooth_penalty,
         }
 
+
+        # --- Payload swing minimization (conditional) ---
+        if self._payload_id is not None and getattr(self.cfg, "payload_swing_reward_enable", False):
+            payload_state = self.get_payload_state()
+            if payload_state is not None:
+                rel_pos_b, rel_vel_b = payload_state
+                # Penalize lateral (X/Y) displacement and velocity to reduce swing
+                pos_xy_sq = torch.sum(rel_pos_b[:, :2] ** 2, dim=1)
+                vel_xy_sq = torch.sum(rel_vel_b[:, :2] ** 2, dim=1)
+                rewards["payload_swing_pos"] = pos_xy_sq * self.cfg.payload_swing_pos_penalty_scale * self.step_dt
+                rewards["payload_swing_vel"] = vel_xy_sq * self.cfg.payload_swing_vel_penalty_scale * self.step_dt
+
         reward = torch.sum(torch.stack(list(rewards.values())), dim=0)
         # Logging
         for key, value in rewards.items():
@@ -296,7 +322,18 @@ class BetaflightEnv(DirectRLEnv):
             self._episode_sums[key][env_ids] = 0.0
 
         self._actions[env_ids] = 0.0
-        
+        # Re/initialize per-env thrust constant
+        if self.cfg.thrust_constant_train_only and self.is_training:
+            # Gaussian sample, then clamp to [min, max]
+            mean = self.cfg.thrust_constant_gauss_mean
+            std = self.cfg.thrust_constant_gauss_std
+            samples = torch.normal(mean=torch.full((len(env_ids),), mean, device=self.device),
+                                   std=torch.full((len(env_ids),), std, device=self.device))
+            samples = samples.clamp(self.cfg.thrust_constant_clip_min, self.cfg.thrust_constant_clip_max)
+            self._thrust_constant[env_ids] = samples
+        else:
+            self._thrust_constant[env_ids] = self.cfg.eval_thrust_constant
+
         # Reset angular velocity control states
         self._desired_ang_vel[env_ids] = 0.0
         self._commanded_ang_vel[env_ids] = 0.0
