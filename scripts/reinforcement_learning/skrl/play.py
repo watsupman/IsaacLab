@@ -49,7 +49,7 @@ parser.add_argument("--log_data", action="store_true", default=False, help="Log 
 
 # append AppLauncher cli args
 parser.add_argument("--pure_pursuit", action="store_true", default=True, help="Enable pure-pursuit circular trajectory")
-parser.add_argument("--pp_lookahead_m", type=float, default=0.9, help="Pure pursuit lookahead (arc length, meters)")
+parser.add_argument("--pp_lookahead_m", type=float, default=0.5, help="Pure pursuit lookahead (arc length, meters)")
 parser.add_argument("--pp_direction", type=str, default="cw", choices=["cw", "ccw"], help="Circle direction for pure pursuit")
 parser.add_argument("--pp_max_step_deg", type=float, default=45.0, help="Clamp per-tick setpoint jump (deg of arc)")
 

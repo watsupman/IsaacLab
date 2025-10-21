@@ -221,7 +221,7 @@ class BetaflightEnvCfg(DirectRLEnvCfg):
     # Angular velocity control parameters
     max_ang_vel_deg_s = 100.0  # Maximum angular velocity in degrees per second
     ang_vel_tau = 0.12  # First-order time constant for angular velocity response
-    thrust_tau = 0.18 # First-order time constant for thrust response
+    thrust_tau = 0.15 # First-order time constant for thrust response
     ang_vel_kp_roll_pitch = 0.1  # Proportional gain for roll and pitch angular velocity control
     ang_vel_kp_yaw = 0.1  # Proportional gain for yaw angular velocity control
 

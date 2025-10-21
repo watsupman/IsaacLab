@@ -70,7 +70,7 @@ class BetaflightEnvCfg(DirectRLEnvCfg):
     """
 
     # --------- Modes ---------
-    num_robots: int = 4
+    num_robots: int = 2
     group_mode: bool = True          # kept for backward-compat; ignored at runtime if num_robots is set
     is_training: bool = False        # False for eval/inference
 
