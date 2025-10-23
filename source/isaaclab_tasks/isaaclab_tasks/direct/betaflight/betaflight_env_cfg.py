@@ -53,7 +53,7 @@ CUSTOM_DRONE_CFG = ArticulationCfg(
         articulation_props=sim_utils.ArticulationRootPropertiesCfg(
             enabled_self_collisions=False,
             solver_position_iteration_count=4,
-            solver_velocity_iteration_count=0,
+            solver_velocity_iteration_count=4,
             sleep_threshold=0.005,
             stabilization_threshold=0.001,
         ),
@@ -91,9 +91,50 @@ DRONE_WITH_PAYLOAD_CFG = ArticulationCfg(
             enable_gyroscopic_forces=True,
         ),
         articulation_props=sim_utils.ArticulationRootPropertiesCfg(
+            fix_root_link=False,
             enabled_self_collisions=False,
             solver_position_iteration_count=4,
-            solver_velocity_iteration_count=0,
+            solver_velocity_iteration_count=4,
+            sleep_threshold=0.005,
+            stabilization_threshold=0.001,
+        ),
+        copy_from_source=False,
+    ),
+    init_state=ArticulationCfg.InitialStateCfg(
+        pos=(0.0, 0.0, 0.5),
+        joint_pos={
+            ".*": 0.0,
+        },
+        joint_vel={
+            "m1_joint": 200.0,
+            "m2_joint": -200.0,
+            "m3_joint": 200.0,
+            "m4_joint": -200.0,
+        },
+    ),
+    actuators={
+        "dummy": ImplicitActuatorCfg(
+            joint_names_expr=[".*"],
+            stiffness=0.0,
+            damping=0.0,
+        ),
+    },
+)
+
+FIXED_DRONE_WITH_PAYLOAD_CFG = ArticulationCfg(
+    prim_path="{ENV_REGEX_NS}/Robot",
+    spawn=sim_utils.UsdFileCfg(
+        usd_path=os.path.join(os.path.dirname(__file__), "fixed_drone_with_payload.usda"),
+        rigid_props=sim_utils.RigidBodyPropertiesCfg(
+            disable_gravity=False,
+            max_depenetration_velocity=10.0,
+            enable_gyroscopic_forces=True,
+        ),
+        articulation_props=sim_utils.ArticulationRootPropertiesCfg(
+            fix_root_link=True,
+            enabled_self_collisions=False,
+            solver_position_iteration_count=4,
+            solver_velocity_iteration_count=4,
             sleep_threshold=0.005,
             stabilization_threshold=0.001,
         ),
@@ -146,6 +187,7 @@ class BetaflightEnvWindow(BaseEnvWindow):
 class BetaflightEnvCfg(DirectRLEnvCfg):
 
     payload = True
+    fixed = False
 
     # === Thrust constant randomization (training-only) ===
     # When is_training=True, each env samples a per-episode thrust constant from a
@@ -203,12 +245,20 @@ class BetaflightEnvCfg(DirectRLEnvCfg):
 
     # robot
     if payload:
-        robot: ArticulationCfg = ArticulationCfg(
-            prim_path="/World/envs/env_.*/Robot",
-            spawn=DRONE_WITH_PAYLOAD_CFG.spawn,
-            init_state=DRONE_WITH_PAYLOAD_CFG.init_state,
-            actuators=DRONE_WITH_PAYLOAD_CFG.actuators,
-        )
+        if fixed:
+            robot: ArticulationCfg = ArticulationCfg(
+                prim_path="/World/envs/env_.*/Robot",
+                spawn=FIXED_DRONE_WITH_PAYLOAD_CFG.spawn,
+                init_state=DRONE_WITH_PAYLOAD_CFG.init_state,
+                actuators=DRONE_WITH_PAYLOAD_CFG.actuators,
+            )
+        else:
+            robot: ArticulationCfg = ArticulationCfg(
+                prim_path="/World/envs/env_.*/Robot",
+                spawn=DRONE_WITH_PAYLOAD_CFG.spawn,
+                init_state=DRONE_WITH_PAYLOAD_CFG.init_state,
+                actuators=DRONE_WITH_PAYLOAD_CFG.actuators,
+            )
     else:
         robot: ArticulationCfg = ArticulationCfg(
             prim_path="/World/envs/env_.*/Robot",
@@ -236,13 +286,13 @@ class BetaflightEnvCfg(DirectRLEnvCfg):
     if payload:
         # reward scales
         lin_vel_reward_scale: float = -0.05
-        ang_vel_reward_scale: float = -0.01
+        ang_vel_reward_scale: float = -0.02
         distance_to_goal_reward_scale: float = 15.0
         orientation_penalty_scale: float = -0.2
         # Payload swing reward (enabled when payload=True)
         payload_swing_reward_enable: bool = True
         payload_swing_pos_penalty_scale: float = -2.0
-        payload_swing_vel_penalty_scale: float = -2.5
+        payload_swing_vel_penalty_scale: float = -4.5
     else:
         lin_vel_reward_scale: float = -0.005
         ang_vel_reward_scale: float = -0.02

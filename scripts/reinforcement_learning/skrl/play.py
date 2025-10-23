@@ -169,6 +169,8 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, expe
 
     if args_cli.log_data:
         payload_log = []
+        drone_id = 0  # match main.py schema
+        obs_dim_for_csv = None
 
     # create isaac environment
     env = gym.make(args_cli.task, cfg=env_cfg, render_mode="rgb_array" if args_cli.video else None)
@@ -335,7 +337,107 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, expe
     # reset environment
     obs, _ = env.reset()
     timestep = 0
-    printLimit = 150
+    # Cache observation dimension for CSV header (matches main.py dynamic header)
+    if args_cli.log_data:
+        try:
+            obs_dim_for_csv = int(obs.shape[-1])
+        except Exception:
+            obs_dim_for_csv = None
+
+    def _extract_pose_vel():
+        """Return (p_world[3], v_world[3]) for env 0 if available, else zeros."""
+        import torch as _torch
+        try:
+            # Group mode
+            if hasattr(env.unwrapped, "_robots"):
+                states = [r.data.root_state_w for r in env.unwrapped._robots]  # each [num_envs, 13]
+                # positions
+                pos_stack = _torch.stack([s[:, :3] for s in states], dim=1)  # [num_envs, N, 3]
+                center_pos = pos_stack.mean(dim=1)  # [num_envs, 3]
+                px, py, pz = float(center_pos[0,0].item()), float(center_pos[0,1].item()), float(center_pos[0,2].item())
+                # velocities if present (columns 7:10 in typical Isaac root state)
+                if states[0].shape[1] >= 10:
+                    vel_stack = _torch.stack([s[:, 7:10] for s in states], dim=1)
+                    center_vel = vel_stack.mean(dim=1)
+                    vx, vy, vz = float(center_vel[0,0].item()), float(center_vel[0,1].item()), float(center_vel[0,2].item())
+                else:
+                    vx = vy = vz = 0.0
+                return (px, py, pz), (vx, vy, vz)
+            # Single robot
+            if hasattr(env.unwrapped, "_robot"):
+                root = env.unwrapped._robot.data.root_state_w  # [num_envs, 13]
+                px, py, pz = float(root[0,0].item()), float(root[0,1].item()), float(root[0,2].item())
+                if root.shape[1] >= 10:
+                    vx, vy, vz = float(root[0,7].item()), float(root[0,8].item()), float(root[0,9].item())
+                else:
+                    vx = vy = vz = 0.0
+                return (px, py, pz), (vx, vy, vz)
+        except Exception:
+            pass
+        return (0.0, 0.0, 0.0), (0.0, 0.0, 0.0)
+
+    def _action_vector_from(actions_obj):
+        """Return a 1D Python list of action floats for logging (env 0), best effort."""
+        import numpy as _np
+        import torch as _torch
+        # Dict (multi-agent): take the first agent's action
+        if isinstance(actions_obj, dict):
+            try:
+                first_key = next(iter(actions_obj.keys()))
+                a = actions_obj[first_key]
+            except Exception:
+                a = None
+        else:
+            a = actions_obj
+        if a is None:
+            return []
+        try:
+            if isinstance(a, _torch.Tensor):
+                arr = a.detach().cpu().numpy()
+            else:
+                arr = _np.asarray(a)
+            # if batched: pick env 0
+            if arr.ndim > 1:
+                arr = arr[0]
+            return [float(x) for x in arr.ravel().tolist()]
+        except Exception:
+            return []
+
+    def _log_step_row(current_obs, current_actions):
+        """Append a CSV row matching main.py's format:
+        [sec, nsec, drone_id, p_w_x, p_w_y, p_w_z, v_w_x, v_w_y, v_w_z, obs..., act_roll, act_pitch, act_force, act_yaw]
+        """
+        if not args_cli.log_data:
+            return
+        try:
+            ts = time.time_ns()
+            sec = ts // 1_000_000_000
+            nsec = ts % 1_000_000_000
+            (px, py, pz), (vx, vy, vz) = _extract_pose_vel()
+            # observation as flat list (env 0)
+            try:
+                if hasattr(current_obs, "cpu"):
+                    obs_list = current_obs[0].detach().cpu().numpy().astype(float).tolist()
+                else:
+                    obs_list = list(current_obs[0])
+            except Exception:
+                try:
+                    # fall back to plain flatten
+                    obs_list = current_obs.flatten().tolist()
+                except Exception:
+                    obs_list = []
+            # actions -> roll, pitch, force, yaw mapping like main.py
+            a = _action_vector_from(current_actions)
+            force = float(a[0]) if len(a) > 0 else 0.0
+            roll  = float(a[1]) if len(a) > 1 else 0.0
+            pitch = float(a[2]) if len(a) > 2 else 0.0
+            yaw   = float(a[3]) if len(a) > 3 else 0.0
+            row = [int(sec), int(nsec), int(0), float(px), float(py), float(pz), float(vx), float(vy), float(vz)] + [float(x) for x in obs_list] + [roll, pitch, force, yaw]
+            payload_log.append(row)
+        except Exception:
+            pass
+
+    printLimit = 10
     # set print options for torch
     torch.set_printoptions(precision=3, sci_mode=False)
     # simulate environment
@@ -350,8 +452,7 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, expe
 
         if timestep < printLimit:
             print(f"Timestep {timestep}: Obs: {obs.cpu().numpy().round(3)}")
-            if args_cli.log_data:
-                payload_log.append(obs[0].tolist())
+            # logging handled by _log_step_row; keep print only
 
         # run everything in inference mode
         with torch.inference_mode():
@@ -365,19 +466,23 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, expe
             # - single-agent (deterministic) actions
             else:
                 actions = outputs[-1].get("mean_actions", outputs[0])
+            # log row in main.py-compatible format BEFORE env.step
+            try:
+                _log_step_row(obs, actions)
+            except Exception:
+                pass
             # env stepping
             obs, _, _, _, _ = env.step(actions)
 
         # print observation
         if timestep < printLimit:
             print(f"Action: {actions.detach().cpu().numpy().round(3)}")
-            if args_cli.log_data:
-                payload_log.append([actions[0][2].item() if hasattr(actions, "item") else actions[0][2]])
+            # logging handled by _log_step_row; keep print only
         
 
         timestep += 1
         # exit the play loop after 200 steps
-        if timestep >= 4000:
+        if timestep >= 800:
             break
 
         # time delay for real-time evaluation
@@ -387,13 +492,47 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, expe
 
     if args_cli.log_data and payload_log:
         import csv
+        # Build header like main.py
+        header = ["sec","nsec","drone_id","p_w_x","p_w_y","p_w_z","v_w_x","v_w_y","v_w_z"]
+        # Determine obs dim and build named columns
+        try:
+            _obs_dim = int(obs_dim_for_csv) if (obs_dim_for_csv is not None) else int(len(payload_log[0]) - 9 - 4)
+        except Exception:
+            _obs_dim = max(0, int(len(payload_log[0]) - 9 - 4))
 
-        payload_log_path = os.path.join(log_dir, "obs_act_log.csv")
+        def _named_obs_header(n):
+            # 19-D: [v_b(3), w_b(3), quat wxyz(4), pos_err_b(3), heading(2), prev_actions(4)]
+            base = [
+                "v_b_x","v_b_y","v_b_z",
+                "w_b_x","w_b_y","w_b_z",
+                "quat_w","quat_x","quat_y","quat_z",
+                "pos_err_b_x","pos_err_b_y","pos_err_b_z",
+                "heading_sin","heading_cos",
+                "prev_force","prev_roll","prev_pitch","prev_yaw",
+            ]
+            if n == 19:
+                return base
+            elif n == 25:
+                # 25-D adds: payload_pos_b(3), payload_vel_b(3)
+                return base + [
+                    "payload_pos_b_x","payload_pos_b_y","payload_pos_b_z",
+                    "payload_vel_b_x","payload_vel_b_y","payload_vel_b_z",
+                ]
+            else:
+                # Fallback if custom/unknown obs layout
+                return [f"obs_{{i}}" for i in range(n)]
 
+        header += _named_obs_header(_obs_dim)
+        header += ["act_roll","act_pitch","act_force","act_yaw"]
+
+        payload_log_path = os.path.join(log_dir, "isaac_obs_act_log.csv")
+        os.makedirs(os.path.dirname(payload_log_path), exist_ok=True)
         with open(payload_log_path, "w", newline="") as f:
             writer = csv.writer(f)
+            writer.writerow(header)
             writer.writerows(payload_log)
         print(f"[INFO] Log saved to: {payload_log_path}")
+
     # close the simulator
     env.close()
 

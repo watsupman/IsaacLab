@@ -184,7 +184,7 @@ class BetaflightEnv(DirectRLEnv):
 
     def _apply_action(self) -> None:
         self._robot.set_external_force_and_torque(self._thrust, self._moment, body_ids=self._body_id)
-
+    
     def _get_observations(self) -> dict:
         quad_pos_w = self._robot.data.root_state_w[:, :3]
         quad_quat_w = self._robot.data.root_state_w[:, 3:7]
@@ -207,7 +207,10 @@ class BetaflightEnv(DirectRLEnv):
             relative_payload_pos_b, _ = subtract_frame_transforms(
                 quad_pos_w, quad_quat_w, payload_pos_w
             )
-            relative_payload_vel_b = payload_vel_w - self._robot.data.root_lin_vel_w
+            # relative_payload_vel_b = payload_vel_w - self._robot.data.root_lin_vel_w
+            v_rel_w = payload_vel_w - self._robot.data.root_lin_vel_w
+            R_wb = self.quat_wxyz_to_rotmat(quad_quat_w)
+            relative_payload_vel_b = torch.bmm(R_wb, v_rel_w.unsqueeze(-1)).squeeze(-1)
             obs = torch.cat([
                 self._robot.data.root_lin_vel_b,
                 self._robot.data.root_ang_vel_b,
@@ -404,4 +407,40 @@ class BetaflightEnv(DirectRLEnv):
         )
         relative_payload_vel_b = vel - self._robot.data.root_lin_vel_w
         return relative_payload_pos_b, relative_payload_vel_b
+
+    @staticmethod
+    def quat_wxyz_to_rotmat(q):
+        # q: (N,4) or (4,)
+        if not torch.is_tensor(q):
+            q = torch.as_tensor(q, dtype=torch.float32)
+        q = q.to(dtype=torch.float32)
+        if q.ndim == 1:
+            q = q.unsqueeze(0)
+        # normalize
+        q = q / torch.linalg.norm(q, dim=-1, keepdim=True).clamp_min(1e-12)
+        w, x, y, z = q.unbind(-1)
+
+        # Build R_bw (body->world)
+        r00 = 1.0 - 2.0 * (y * y + z * z)
+        r01 = 2.0 * (x * y - w * z)
+        r02 = 2.0 * (x * z + w * y)
+
+        r10 = 2.0 * (x * y + w * z)
+        r11 = 1.0 - 2.0 * (x * x + z * z)
+        r12 = 2.0 * (y * z - w * x)
+
+        r20 = 2.0 * (x * z - w * y)
+        r21 = 2.0 * (y * z + w * x)
+        r22 = 1.0 - 2.0 * (x * x + y * y)
+
+        R_bw = torch.stack(
+            [
+                torch.stack([r00, r01, r02], dim=-1),
+                torch.stack([r10, r11, r12], dim=-1),
+                torch.stack([r20, r21, r22], dim=-1),
+            ],
+            dim=-2,
+        )
+        # Return R_wb so v_b = R_wb @ v_w
+        return R_bw.transpose(-1, -2)
 
