@@ -53,7 +53,7 @@ CUSTOM_DRONE_CFG = ArticulationCfg(
         articulation_props=sim_utils.ArticulationRootPropertiesCfg(
             enabled_self_collisions=False,
             solver_position_iteration_count=4,
-            solver_velocity_iteration_count=4,
+            solver_velocity_iteration_count=0,
             sleep_threshold=0.005,
             stabilization_threshold=0.001,
         ),
@@ -94,7 +94,7 @@ DRONE_WITH_PAYLOAD_CFG = ArticulationCfg(
             fix_root_link=False,
             enabled_self_collisions=False,
             solver_position_iteration_count=4,
-            solver_velocity_iteration_count=4,
+            solver_velocity_iteration_count=0,
             sleep_threshold=0.005,
             stabilization_threshold=0.001,
         ),
@@ -134,7 +134,7 @@ FIXED_DRONE_WITH_PAYLOAD_CFG = ArticulationCfg(
             fix_root_link=True,
             enabled_self_collisions=False,
             solver_position_iteration_count=4,
-            solver_velocity_iteration_count=4,
+            solver_velocity_iteration_count=0,
             sleep_threshold=0.005,
             stabilization_threshold=0.001,
         ),
@@ -195,11 +195,11 @@ class BetaflightEnvCfg(DirectRLEnvCfg):
     # On eval (is_training=False), a fixed constant is used.
     is_training: bool = False  # set False for evaluation/inference
     thrust_constant_train_only: bool = False
-    thrust_constant_gauss_mean: float = 38.0
-    thrust_constant_gauss_std: float = 1.5  # ~95% within [36, 42] before clamping
-    thrust_constant_clip_min: float = 36.0
-    thrust_constant_clip_max: float = 42.0
-    eval_thrust_constant: float = 38.0
+    thrust_constant_gauss_mean: float = 42.0
+    thrust_constant_gauss_std: float = 1.5  # ~95% within [42, 45] before clamping
+    thrust_constant_clip_min: float = 40.0
+    thrust_constant_clip_max: float = 45.0
+    eval_thrust_constant: float = 42.0
 
     # env
     episode_length_s = 10.0
@@ -271,7 +271,8 @@ class BetaflightEnvCfg(DirectRLEnvCfg):
     # Angular velocity control parameters
     max_ang_vel_deg_s = 100.0  # Maximum angular velocity in degrees per second
     ang_vel_tau = 0.12  # First-order time constant for angular velocity response
-    thrust_tau = 0.15 # First-order time constant for thrust response
+    thrust_tau = 0.15
+    # thrust_tau = 0.15 # First-order time constant for thrust response
     ang_vel_kp_roll_pitch = 0.1  # Proportional gain for roll and pitch angular velocity control
     ang_vel_kp_yaw = 0.1  # Proportional gain for yaw angular velocity control
 
@@ -285,14 +286,20 @@ class BetaflightEnvCfg(DirectRLEnvCfg):
 
     if payload:
         # reward scales
-        lin_vel_reward_scale: float = -0.05
+        lin_vel_reward_scale: float = -0.005
         ang_vel_reward_scale: float = -0.02
         distance_to_goal_reward_scale: float = 15.0
         orientation_penalty_scale: float = -0.2
         # Payload swing reward (enabled when payload=True)
         payload_swing_reward_enable: bool = True
-        payload_swing_pos_penalty_scale: float = -2.0
-        payload_swing_vel_penalty_scale: float = -4.5
+        payload_swing_pos_penalty_scale: float = -0.5
+        payload_swing_vel_penalty_scale: float = -0.5
+
+        thrust_smoothness_penalty_scale: float = -0.25
+        roll_smoothness_penalty_scale: float   = -0.1
+        pitch_smoothness_penalty_scale: float  = -0.1
+        yaw_smoothness_penalty_scale: float    = -0.21
+
     else:
         lin_vel_reward_scale: float = -0.005
         ang_vel_reward_scale: float = -0.02
@@ -303,10 +310,10 @@ class BetaflightEnvCfg(DirectRLEnvCfg):
         payload_swing_pos_penalty_scale: float = 0.0
         payload_swing_vel_penalty_scale: float = 0.0
 
-    thrust_smoothness_penalty_scale: float = -0.2
-    roll_smoothness_penalty_scale: float   = -0.1
-    pitch_smoothness_penalty_scale: float  = -0.1
-    yaw_smoothness_penalty_scale: float    = -0.1
+        thrust_smoothness_penalty_scale: float = -0.2
+        roll_smoothness_penalty_scale: float   = -0.1
+        pitch_smoothness_penalty_scale: float  = -0.1
+        yaw_smoothness_penalty_scale: float    = -0.1
 
 
     distance_normalizer: float = 0.8

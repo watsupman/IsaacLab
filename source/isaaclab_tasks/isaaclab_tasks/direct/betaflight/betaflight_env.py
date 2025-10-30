@@ -43,7 +43,6 @@ class BetaflightEnv(DirectRLEnv):
 
         self._custom_goal = None
         self._custom_start = None
-        self._goal_sequence = None
         self._goal_idx = torch.zeros(self.num_envs, dtype=torch.long, device=self.device)
 
         # Angular velocity control system variables
@@ -291,14 +290,6 @@ class BetaflightEnv(DirectRLEnv):
         for key, value in rewards.items():
             self._episode_sums[key] += value
         self._episode_sums["total_reward"] += reward
-
-        if self._goal_sequence is not None and self._custom_goal is None:
-            goal_reached = torch.norm(self._desired_pos_w - self._robot.data.root_pos_w, dim=1) < self.cfg.distance_threshold
-            for i in range(self.num_envs):
-                if goal_reached[i]:
-                    self._goal_idx[i] = (self._goal_idx[i] + 1) % len(self._goal_sequence)
-                    self._desired_pos_w[i] = self._goal_sequence[self._goal_idx[i]]
-
         return reward
 
     def _get_dones(self) -> tuple[torch.Tensor, torch.Tensor]:
@@ -347,10 +338,6 @@ class BetaflightEnv(DirectRLEnv):
         if self._custom_goal is not None:
             self._desired_pos_w[env_ids] = self._custom_goal.expand(len(env_ids), -1)
             self._desired_pos_w[env_ids, :2] += self._terrain.env_origins[env_ids, :2]
-        elif self._goal_sequence is not None:
-            self._goal_idx[env_ids] = 0
-            self._desired_pos_w[env_ids] = self._goal_sequence[self._goal_idx[env_ids]].expand(len(env_ids), -1)
-            self._desired_pos_w[env_ids, :2] += self._terrain.env_origins[env_ids, :2]
         else:
             # Randomized for training
             self._desired_pos_w[env_ids, :2] = (
@@ -389,11 +376,6 @@ class BetaflightEnv(DirectRLEnv):
     def _debug_vis_callback(self, event):
         # update the markers
         self.goal_pos_visualizer.visualize(self._desired_pos_w)
-
-    def set_goal_sequence(self, goal_list: list[torch.Tensor]):
-        self._goal_sequence = [g.to(self.device) for g in goal_list]
-        self._goal_idx = torch.zeros(self.num_envs, dtype=torch.long, device=self.device)
-        self._desired_pos_w = torch.stack([g for g in goal_list[:self.num_envs]]).to(self.device)
 
     def get_payload_state(self):
         if self._payload_id is None:

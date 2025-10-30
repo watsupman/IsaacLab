@@ -35,7 +35,7 @@ def Xform "Root"
             {
                 point3f physics:centerOfMass = (0, 0, 0)
                 float3 physics:diagonalInertia = (0.0017447441, 0.0014005395, 0.002782411)
-                float physics:mass = 0.6
+                float physics:mass = 0.56
                 quatf physics:principalAxes = (1, 0, 0, 0)
                 float3 xformOp:rotateXYZ = (0, 0, 0)
                 double3 xformOp:translate = (0, 0, 0)
@@ -282,7 +282,7 @@ def Xform "Root"
                     float physics:breakForce = inf
                     float physics:breakTorque = inf
                     point3f physics:localPos0 = (0.000000, 0.000000, 0.010000)
-                    point3f physics:localPos1 = (-0.000000, 0.000000, 0.4)
+                    point3f physics:localPos1 = (-0.000000, 0.000000, 0.42)
                     quatf physics:localRot0 = (1, 0, 0, 0)
                     quatf physics:localRot1 = (1, 0, 0, 0)
                 }
@@ -1068,11 +1068,11 @@ def Xform "Root"
         {
             float physics:angularDamping = 0.05
             bool physics:kinematicEnabled = 0
-            float physics:mass = 0.05
+            float physics:mass = 0.04
             bool physics:rigidBodyEnabled = 1
             quatd xformOp:orient = (1, 0, 0, 0)
             double3 xformOp:scale = (1, 1, 1)
-            double3 xformOp:translate = (0.000000, 0.000000, -0.4)
+            double3 xformOp:translate = (0.000000, 0.000000, -0.42)
             uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient", "xformOp:scale"]
 
             def Sphere "Sphere"
