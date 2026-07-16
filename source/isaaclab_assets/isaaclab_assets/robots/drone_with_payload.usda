@@ -6,23 +6,23 @@
 
 def Xform "Root"
 {
-    def Xform "custom_drone"
+    def Xform "large_drone"
     {
         token ui:displayGroup = "Material Graphs"
-        token ui:displayName = "custom_drone"
+        token ui:displayName = "large_drone"
         int ui:order = 1024
         float3 xformOp:rotateXYZ = (0, -0, 0)
         float3 xformOp:scale = (1, 1, 1)
         double3 xformOp:translate = (0, 0, 0)
         uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
 
-        def Xform "custom_drone" (
+        def Xform "crazyflie" (
             apiSchemas = ["PhysicsArticulationRootAPI", "PhysxArticulationAPI"]
         )
         {
             bool physxArticulation:enabledSelfCollisions = 0
             token ui:displayGroup = "Material Graphs"
-            token ui:displayName = "custom_drone"
+            token ui:displayName = "large_drone"
             int ui:order = 1024
             float3 xformOp:rotateXYZ = (0, -0, 0)
             float3 xformOp:scale = (1, 1, 1)
@@ -35,7 +35,7 @@ def Xform "Root"
             {
                 point3f physics:centerOfMass = (0, 0, 0)
                 float3 physics:diagonalInertia = (0.0017447441, 0.0014005395, 0.002782411)
-                float physics:mass = 0.56
+                float physics:mass = 0.65
                 quatf physics:principalAxes = (1, 0, 0, 0)
                 float3 xformOp:rotateXYZ = (0, 0, 0)
                 double3 xformOp:translate = (0, 0, 0)
@@ -162,7 +162,7 @@ def Xform "Root"
                     )
                     {
                         float3[] extent = [(-0.5, -0.5, -0.5), (0.5, 0.5, 0.5)]
-                        rel material:binding = </Root/custom_drone/custom_drone/Looks/MaterialPhysics_0>
+                        rel material:binding = </Root/large_drone/crazyflie/Looks/MaterialPhysics_0>
                         double size = 1
                         float3 xformOp:scale = (0.1, 0.1, 0.03)
                         uniform token[] xformOpOrder = ["xformOp:scale"]
@@ -177,8 +177,8 @@ def Xform "Root"
                     float drive:angular:physics:maxForce = inf
                     float drive:angular:physics:stiffness = 100000000
                     uniform token physics:axis = "Z"
-                    rel physics:body0 = </Root/custom_drone/custom_drone/body>
-                    rel physics:body1 = </Root/custom_drone/custom_drone/m1_prop>
+                    rel physics:body0 = </Root/large_drone/crazyflie/body>
+                    rel physics:body1 = </Root/large_drone/crazyflie/m1_prop>
                     float physics:breakForce = 3.4028233e30
                     float physics:breakTorque = 3.4028233e30
                     point3f physics:localPos0 = (0.031, -0.031, 0.021)
@@ -197,8 +197,8 @@ def Xform "Root"
                     float drive:angular:physics:maxForce = inf
                     float drive:angular:physics:stiffness = 100000000
                     uniform token physics:axis = "Z"
-                    rel physics:body0 = </Root/custom_drone/custom_drone/body>
-                    rel physics:body1 = </Root/custom_drone/custom_drone/m2_prop>
+                    rel physics:body0 = </Root/large_drone/crazyflie/body>
+                    rel physics:body1 = </Root/large_drone/crazyflie/m2_prop>
                     float physics:breakForce = 3.4028233e30
                     float physics:breakTorque = 3.4028233e30
                     point3f physics:localPos0 = (-0.031, -0.031, 0.021)
@@ -217,8 +217,8 @@ def Xform "Root"
                     float drive:angular:physics:maxForce = inf
                     float drive:angular:physics:stiffness = 100000000
                     uniform token physics:axis = "Z"
-                    rel physics:body0 = </Root/custom_drone/custom_drone/body>
-                    rel physics:body1 = </Root/custom_drone/custom_drone/m3_prop>
+                    rel physics:body0 = </Root/large_drone/crazyflie/body>
+                    rel physics:body1 = </Root/large_drone/crazyflie/m3_prop>
                     float physics:breakForce = 3.4028233e30
                     float physics:breakTorque = 3.4028233e30
                     point3f physics:localPos0 = (-0.031, 0.031, 0.021)
@@ -237,8 +237,8 @@ def Xform "Root"
                     float drive:angular:physics:maxForce = inf
                     float drive:angular:physics:stiffness = 100000000
                     uniform token physics:axis = "Z"
-                    rel physics:body0 = </Root/custom_drone/custom_drone/body>
-                    rel physics:body1 = </Root/custom_drone/custom_drone/m4_prop>
+                    rel physics:body0 = </Root/large_drone/crazyflie/body>
+                    rel physics:body1 = </Root/large_drone/crazyflie/m4_prop>
                     float physics:breakForce = 3.4028233e30
                     float physics:breakTorque = 3.4028233e30
                     point3f physics:localPos0 = (0.031, 0.031, 0.021)
@@ -250,39 +250,27 @@ def Xform "Root"
                 }
 
                 def PhysicsJoint "D6Joint" (
-
-                    apiSchemas = ["PhysicsLimitAPI:transX", "PhysicsLimitAPI:transY", "PhysicsLimitAPI:transZ", "PhysicsLimitAPI:rotX", "PhysicsLimitAPI:rotY", "PhysicsLimitAPI:rotZ", "PhysicsDriveAPI:rotY", "PhysicsDriveAPI:rotX", "PhysxJointAPI"]
-                
+                    apiSchemas = ["PhysicsLimitAPI:transX", "PhysicsLimitAPI:transY", "PhysicsLimitAPI:transZ", "PhysicsLimitAPI:rotX", "PhysicsLimitAPI:rotY", "PhysicsLimitAPI:rotZ"]
                 )
                 {
-                    bool physics:jointEnabled = 1
-		            float limit:rotX:physics:high = 90
+                    float limit:rotX:physics:high = 90
                     float limit:rotX:physics:low = -90
                     float limit:rotY:physics:high = 90
                     float limit:rotY:physics:low = -90
-                    float limit:rotZ:physics:high = 0
-                    float limit:rotZ:physics:low = 0
+                    float limit:rotZ:physics:high = 90
+                    float limit:rotZ:physics:low = -90
                     float limit:transX:physics:high = 0
                     float limit:transX:physics:low = 0
                     float limit:transY:physics:high = 0
                     float limit:transY:physics:low = 0
                     float limit:transZ:physics:high = 0
                     float limit:transZ:physics:low = 0
-                    float physxJoint:jointFriction = 0.001
-                    token drive:rotX:physics:driveType = "force"
-                    float drive:rotX:physics:stiffness = 0
-                    float drive:rotX:physics:damping = 0.001
-                    float drive:rotX:physics:maxForce = inf
-                    token drive:rotY:physics:driveType = "force"
-                    float drive:rotY:physics:stiffness = 0
-                    float drive:rotY:physics:damping = 0.001
-                    float drive:rotY:physics:maxForce = inf
-                    rel physics:body0 = </Root/custom_drone/custom_drone/body>
-                    rel physics:body1 = </Root/custom_drone/payload>
+                    rel physics:body0 = </Root/large_drone/crazyflie/body>
+                    rel physics:body1 = </Root/large_drone/payload>
                     float physics:breakForce = inf
                     float physics:breakTorque = inf
-                    point3f physics:localPos0 = (0.000000, 0.000000, 0.010000)
-                    point3f physics:localPos1 = (-0.000000, 0.000000, 0.4)
+                    point3f physics:localPos0 = (0, 0, 0.01)
+                    point3f physics:localPos1 = (0, 0, 0.11)
                     quatf physics:localRot0 = (1, 0, 0, 0)
                     quatf physics:localRot1 = (1, 0, 0, 0)
                 }
@@ -412,9 +400,9 @@ def Xform "Root"
             {
                 def Material "Material_0"
                 {
-                    token outputs:mdl:displacement.connect = </Root/custom_drone/custom_drone/Looks/Material_0/Shader.outputs:out>
-                    token outputs:mdl:surface.connect = </Root/custom_drone/custom_drone/Looks/Material_0/Shader.outputs:out>
-                    token outputs:mdl:volume.connect = </Root/custom_drone/custom_drone/Looks/Material_0/Shader.outputs:out>
+                    token outputs:mdl:displacement.connect = </Root/large_drone/crazyflie/Looks/Material_0/Shader.outputs:out>
+                    token outputs:mdl:surface.connect = </Root/large_drone/crazyflie/Looks/Material_0/Shader.outputs:out>
+                    token outputs:mdl:volume.connect = </Root/large_drone/crazyflie/Looks/Material_0/Shader.outputs:out>
 
                     def Shader "Shader"
                     {
@@ -475,9 +463,9 @@ def Xform "Root"
 
                 def Material "Material_1"
                 {
-                    token outputs:mdl:displacement.connect = </Root/custom_drone/custom_drone/Looks/Material_1/Shader.outputs:out>
-                    token outputs:mdl:surface.connect = </Root/custom_drone/custom_drone/Looks/Material_1/Shader.outputs:out>
-                    token outputs:mdl:volume.connect = </Root/custom_drone/custom_drone/Looks/Material_1/Shader.outputs:out>
+                    token outputs:mdl:displacement.connect = </Root/large_drone/crazyflie/Looks/Material_1/Shader.outputs:out>
+                    token outputs:mdl:surface.connect = </Root/large_drone/crazyflie/Looks/Material_1/Shader.outputs:out>
+                    token outputs:mdl:volume.connect = </Root/large_drone/crazyflie/Looks/Material_1/Shader.outputs:out>
 
                     def Shader "Shader"
                     {
@@ -538,9 +526,9 @@ def Xform "Root"
 
                 def Material "Material_2"
                 {
-                    token outputs:mdl:displacement.connect = </Root/custom_drone/custom_drone/Looks/Material_2/Shader.outputs:out>
-                    token outputs:mdl:surface.connect = </Root/custom_drone/custom_drone/Looks/Material_2/Shader.outputs:out>
-                    token outputs:mdl:volume.connect = </Root/custom_drone/custom_drone/Looks/Material_2/Shader.outputs:out>
+                    token outputs:mdl:displacement.connect = </Root/large_drone/crazyflie/Looks/Material_2/Shader.outputs:out>
+                    token outputs:mdl:surface.connect = </Root/large_drone/crazyflie/Looks/Material_2/Shader.outputs:out>
+                    token outputs:mdl:volume.connect = </Root/large_drone/crazyflie/Looks/Material_2/Shader.outputs:out>
 
                     def Shader "Shader"
                     {
@@ -601,9 +589,9 @@ def Xform "Root"
 
                 def Material "Material_3"
                 {
-                    token outputs:mdl:displacement.connect = </Root/custom_drone/custom_drone/Looks/Material_3/Shader.outputs:out>
-                    token outputs:mdl:surface.connect = </Root/custom_drone/custom_drone/Looks/Material_3/Shader.outputs:out>
-                    token outputs:mdl:volume.connect = </Root/custom_drone/custom_drone/Looks/Material_3/Shader.outputs:out>
+                    token outputs:mdl:displacement.connect = </Root/large_drone/crazyflie/Looks/Material_3/Shader.outputs:out>
+                    token outputs:mdl:surface.connect = </Root/large_drone/crazyflie/Looks/Material_3/Shader.outputs:out>
+                    token outputs:mdl:volume.connect = </Root/large_drone/crazyflie/Looks/Material_3/Shader.outputs:out>
 
                     def Shader "Shader"
                     {
@@ -664,9 +652,9 @@ def Xform "Root"
 
                 def Material "Material_4"
                 {
-                    token outputs:mdl:displacement.connect = </Root/custom_drone/custom_drone/Looks/Material_4/Shader.outputs:out>
-                    token outputs:mdl:surface.connect = </Root/custom_drone/custom_drone/Looks/Material_4/Shader.outputs:out>
-                    token outputs:mdl:volume.connect = </Root/custom_drone/custom_drone/Looks/Material_4/Shader.outputs:out>
+                    token outputs:mdl:displacement.connect = </Root/large_drone/crazyflie/Looks/Material_4/Shader.outputs:out>
+                    token outputs:mdl:surface.connect = </Root/large_drone/crazyflie/Looks/Material_4/Shader.outputs:out>
+                    token outputs:mdl:volume.connect = </Root/large_drone/crazyflie/Looks/Material_4/Shader.outputs:out>
 
                     def Shader "Shader"
                     {
@@ -727,9 +715,9 @@ def Xform "Root"
 
                 def Material "Material_5"
                 {
-                    token outputs:mdl:displacement.connect = </Root/custom_drone/custom_drone/Looks/Material_5/Shader.outputs:out>
-                    token outputs:mdl:surface.connect = </Root/custom_drone/custom_drone/Looks/Material_5/Shader.outputs:out>
-                    token outputs:mdl:volume.connect = </Root/custom_drone/custom_drone/Looks/Material_5/Shader.outputs:out>
+                    token outputs:mdl:displacement.connect = </Root/large_drone/crazyflie/Looks/Material_5/Shader.outputs:out>
+                    token outputs:mdl:surface.connect = </Root/large_drone/crazyflie/Looks/Material_5/Shader.outputs:out>
+                    token outputs:mdl:volume.connect = </Root/large_drone/crazyflie/Looks/Material_5/Shader.outputs:out>
 
                     def Shader "Shader"
                     {
@@ -808,9 +796,9 @@ def Xform "Root"
 
                 def Material "Material_6"
                 {
-                    token outputs:mdl:displacement.connect = </Root/custom_drone/custom_drone/Looks/Material_6/Shader.outputs:out>
-                    token outputs:mdl:surface.connect = </Root/custom_drone/custom_drone/Looks/Material_6/Shader.outputs:out>
-                    token outputs:mdl:volume.connect = </Root/custom_drone/custom_drone/Looks/Material_6/Shader.outputs:out>
+                    token outputs:mdl:displacement.connect = </Root/large_drone/crazyflie/Looks/Material_6/Shader.outputs:out>
+                    token outputs:mdl:surface.connect = </Root/large_drone/crazyflie/Looks/Material_6/Shader.outputs:out>
+                    token outputs:mdl:volume.connect = </Root/large_drone/crazyflie/Looks/Material_6/Shader.outputs:out>
 
                     def Shader "Shader"
                     {
@@ -871,9 +859,9 @@ def Xform "Root"
 
                 def Material "Material_7"
                 {
-                    token outputs:mdl:displacement.connect = </Root/custom_drone/custom_drone/Looks/Material_7/Shader.outputs:out>
-                    token outputs:mdl:surface.connect = </Root/custom_drone/custom_drone/Looks/Material_7/Shader.outputs:out>
-                    token outputs:mdl:volume.connect = </Root/custom_drone/custom_drone/Looks/Material_7/Shader.outputs:out>
+                    token outputs:mdl:displacement.connect = </Root/large_drone/crazyflie/Looks/Material_7/Shader.outputs:out>
+                    token outputs:mdl:surface.connect = </Root/large_drone/crazyflie/Looks/Material_7/Shader.outputs:out>
+                    token outputs:mdl:volume.connect = </Root/large_drone/crazyflie/Looks/Material_7/Shader.outputs:out>
 
                     def Shader "Shader"
                     {
@@ -934,9 +922,9 @@ def Xform "Root"
 
                 def Material "Material_8"
                 {
-                    token outputs:mdl:displacement.connect = </Root/custom_drone/custom_drone/Looks/Material_8/Shader.outputs:out>
-                    token outputs:mdl:surface.connect = </Root/custom_drone/custom_drone/Looks/Material_8/Shader.outputs:out>
-                    token outputs:mdl:volume.connect = </Root/custom_drone/custom_drone/Looks/Material_8/Shader.outputs:out>
+                    token outputs:mdl:displacement.connect = </Root/large_drone/crazyflie/Looks/Material_8/Shader.outputs:out>
+                    token outputs:mdl:surface.connect = </Root/large_drone/crazyflie/Looks/Material_8/Shader.outputs:out>
+                    token outputs:mdl:volume.connect = </Root/large_drone/crazyflie/Looks/Material_8/Shader.outputs:out>
 
                     def Shader "Shader"
                     {
@@ -997,9 +985,9 @@ def Xform "Root"
 
                 def Material "Material_9"
                 {
-                    token outputs:mdl:displacement.connect = </Root/custom_drone/custom_drone/Looks/Material_9/Shader.outputs:out>
-                    token outputs:mdl:surface.connect = </Root/custom_drone/custom_drone/Looks/Material_9/Shader.outputs:out>
-                    token outputs:mdl:volume.connect = </Root/custom_drone/custom_drone/Looks/Material_9/Shader.outputs:out>
+                    token outputs:mdl:displacement.connect = </Root/large_drone/crazyflie/Looks/Material_9/Shader.outputs:out>
+                    token outputs:mdl:surface.connect = </Root/large_drone/crazyflie/Looks/Material_9/Shader.outputs:out>
+                    token outputs:mdl:volume.connect = </Root/large_drone/crazyflie/Looks/Material_9/Shader.outputs:out>
 
                     def Shader "Shader"
                     {
@@ -1058,26 +1046,23 @@ def Xform "Root"
                     }
                 }
             }
-    
-}
-
+        }
 
         def Xform "payload" (
             apiSchemas = ["PhysicsRigidBodyAPI", "PhysxRigidBodyAPI", "PhysicsMassAPI"]
         )
         {
-            float physics:angularDamping = 0.05
             bool physics:kinematicEnabled = 0
-            float physics:mass = 0.05
+            float physics:mass = 0.1
             bool physics:rigidBodyEnabled = 1
             quatd xformOp:orient = (1, 0, 0, 0)
             double3 xformOp:scale = (1, 1, 1)
-            double3 xformOp:translate = (0.000000, 0.000000, -0.4)
+            double3 xformOp:translate = (0, 0, -0.1)
             uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient", "xformOp:scale"]
 
             def Sphere "Sphere"
             {
-                float3[] extent = [(-0.042, -0.042, -0.042), (0.042, 0.042, 0.042)]
+                float3[] extent = [(-0.01, -0.01, -0.01), (0.01, 0.01, 0.01)]
                 double radius = 0.01
                 custom bool refinementEnableOverride = 1
                 custom int refinementLevel = 2

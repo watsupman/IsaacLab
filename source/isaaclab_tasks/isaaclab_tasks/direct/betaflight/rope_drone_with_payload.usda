@@ -250,13 +250,18 @@ def Xform "Root"
                 }
 
                 def PhysicsJoint "D6Joint" (
-
                     apiSchemas = ["PhysicsLimitAPI:transX", "PhysicsLimitAPI:transY", "PhysicsLimitAPI:transZ", "PhysicsLimitAPI:rotX", "PhysicsLimitAPI:rotY", "PhysicsLimitAPI:rotZ", "PhysicsDriveAPI:rotY", "PhysicsDriveAPI:rotX", "PhysxJointAPI"]
-                
                 )
                 {
-                    bool physics:jointEnabled = 1
-		            float limit:rotX:physics:high = 90
+                    float drive:rotX:physics:damping = 0.001
+                    token drive:rotX:physics:driveType = "force"
+                    float drive:rotX:physics:maxForce = inf
+                    float drive:rotX:physics:stiffness = 0
+                    float drive:rotY:physics:damping = 0.001
+                    token drive:rotY:physics:driveType = "force"
+                    float drive:rotY:physics:maxForce = inf
+                    float drive:rotY:physics:stiffness = 0
+                    float limit:rotX:physics:high = 90
                     float limit:rotX:physics:low = -90
                     float limit:rotY:physics:high = 90
                     float limit:rotY:physics:low = -90
@@ -268,23 +273,16 @@ def Xform "Root"
                     float limit:transY:physics:low = 0
                     float limit:transZ:physics:high = 0
                     float limit:transZ:physics:low = 0
-                    float physxJoint:jointFriction = 0.001
-                    token drive:rotX:physics:driveType = "force"
-                    float drive:rotX:physics:stiffness = 0
-                    float drive:rotX:physics:damping = 0.001
-                    float drive:rotX:physics:maxForce = inf
-                    token drive:rotY:physics:driveType = "force"
-                    float drive:rotY:physics:stiffness = 0
-                    float drive:rotY:physics:damping = 0.001
-                    float drive:rotY:physics:maxForce = inf
                     rel physics:body0 = </Root/custom_drone/custom_drone/body>
-                    rel physics:body1 = </Root/custom_drone/payload>
+                    rel physics:body1 = </Root/custom_drone/rope/link_01>
                     float physics:breakForce = inf
                     float physics:breakTorque = inf
-                    point3f physics:localPos0 = (0.000000, 0.000000, 0.010000)
-                    point3f physics:localPos1 = (-0.000000, 0.000000, 0.4)
+                    bool physics:jointEnabled = 1
+                    point3f physics:localPos0 = (0, 0, 0)
+                    point3f physics:localPos1 = (0, 0, 0.005)
                     quatf physics:localRot0 = (1, 0, 0, 0)
                     quatf physics:localRot1 = (1, 0, 0, 0)
+                    float physxJoint:jointFriction = 0.001
                 }
             }
 
@@ -1058,9 +1056,8 @@ def Xform "Root"
                     }
                 }
             }
-    
-}
-
+            
+        }
 
         def Xform "payload" (
             apiSchemas = ["PhysicsRigidBodyAPI", "PhysxRigidBodyAPI", "PhysicsMassAPI"]
@@ -1068,11 +1065,11 @@ def Xform "Root"
         {
             float physics:angularDamping = 0.05
             bool physics:kinematicEnabled = 0
-            float physics:mass = 0.05
+            float physics:mass = 0.04
             bool physics:rigidBodyEnabled = 1
             quatd xformOp:orient = (1, 0, 0, 0)
             double3 xformOp:scale = (1, 1, 1)
-            double3 xformOp:translate = (0.000000, 0.000000, -0.4)
+            double3 xformOp:translate = (0, 0, -0.420)
             uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient", "xformOp:scale"]
 
             def Sphere "Sphere"
@@ -1085,6 +1082,1227 @@ def Xform "Root"
                 double3 xformOp:scale = (1, 1, 1)
                 double3 xformOp:translate = (0, 0, 0)
                 uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient", "xformOp:scale"]
+            }
+        }
+
+        def Xform "rope"
+        {
+            def Xform "link_01" (
+                apiSchemas = ["PhysicsRigidBodyAPI", "PhysxRigidBodyAPI", "PhysicsMassAPI"]
+            )
+            {
+                float physics:mass = 0.001
+                quatd xformOp:orient = (1, 0, 0, 0)
+                double3 xformOp:translate = (0, 0, -0.005)
+                uniform token[] xformOpOrder = ["xformOp:orient", "xformOp:translate"]
+
+                def Capsule "geom"
+                {
+                    double height = 0.008
+                    double radius = 0.004
+                }
+            }
+
+            def Xform "link_02" (
+                apiSchemas = ["PhysicsRigidBodyAPI", "PhysxRigidBodyAPI", "PhysicsMassAPI"]
+            )
+            {
+                float physics:mass = 0.001
+                quatd xformOp:orient = (1, 0, 0, 0)
+                double3 xformOp:translate = (0, 0, -0.015)
+                uniform token[] xformOpOrder = ["xformOp:orient", "xformOp:translate"]
+
+                def Capsule "geom"
+                {
+                    double height = 0.008
+                    double radius = 0.004
+                }
+            }
+
+            def Xform "link_03" (
+                apiSchemas = ["PhysicsRigidBodyAPI", "PhysxRigidBodyAPI", "PhysicsMassAPI"]
+            )
+            {
+                float physics:mass = 0.001
+                quatd xformOp:orient = (1, 0, 0, 0)
+                double3 xformOp:translate = (0, 0, -0.025)
+                uniform token[] xformOpOrder = ["xformOp:orient", "xformOp:translate"]
+
+                def Capsule "geom"
+                {
+                    double height = 0.008
+                    double radius = 0.004
+                }
+            }
+
+            def Xform "link_04" (
+                apiSchemas = ["PhysicsRigidBodyAPI", "PhysxRigidBodyAPI", "PhysicsMassAPI"]
+            )
+            {
+                float physics:mass = 0.001
+                quatd xformOp:orient = (1, 0, 0, 0)
+                double3 xformOp:translate = (0, 0, -0.035)
+                uniform token[] xformOpOrder = ["xformOp:orient", "xformOp:translate"]
+
+                def Capsule "geom"
+                {
+                    double height = 0.008
+                    double radius = 0.004
+                }
+            }
+
+            def Xform "link_05" (
+                apiSchemas = ["PhysicsRigidBodyAPI", "PhysxRigidBodyAPI", "PhysicsMassAPI"]
+            )
+            {
+                float physics:mass = 0.001
+                quatd xformOp:orient = (1, 0, 0, 0)
+                double3 xformOp:translate = (0, 0, -0.045)
+                uniform token[] xformOpOrder = ["xformOp:orient", "xformOp:translate"]
+
+                def Capsule "geom"
+                {
+                    double height = 0.008
+                    double radius = 0.004
+                }
+            }
+
+            def Xform "link_06" (
+                apiSchemas = ["PhysicsRigidBodyAPI", "PhysxRigidBodyAPI", "PhysicsMassAPI"]
+            )
+            {
+                float physics:mass = 0.001
+                quatd xformOp:orient = (1, 0, 0, 0)
+                double3 xformOp:translate = (0, 0, -0.055)
+                uniform token[] xformOpOrder = ["xformOp:orient", "xformOp:translate"]
+
+                def Capsule "geom"
+                {
+                    double height = 0.008
+                    double radius = 0.004
+                }
+            }
+
+            def Xform "link_07" (
+                apiSchemas = ["PhysicsRigidBodyAPI", "PhysxRigidBodyAPI", "PhysicsMassAPI"]
+            )
+            {
+                float physics:mass = 0.001
+                quatd xformOp:orient = (1, 0, 0, 0)
+                double3 xformOp:translate = (0, 0, -0.065)
+                uniform token[] xformOpOrder = ["xformOp:orient", "xformOp:translate"]
+
+                def Capsule "geom"
+                {
+                    double height = 0.008
+                    double radius = 0.004
+                }
+            }
+
+            def Xform "link_08" (
+                apiSchemas = ["PhysicsRigidBodyAPI", "PhysxRigidBodyAPI", "PhysicsMassAPI"]
+            )
+            {
+                float physics:mass = 0.001
+                quatd xformOp:orient = (1, 0, 0, 0)
+                double3 xformOp:translate = (0, 0, -0.075)
+                uniform token[] xformOpOrder = ["xformOp:orient", "xformOp:translate"]
+
+                def Capsule "geom"
+                {
+                    double height = 0.008
+                    double radius = 0.004
+                }
+            }
+
+            def Xform "link_09" (
+                apiSchemas = ["PhysicsRigidBodyAPI", "PhysxRigidBodyAPI", "PhysicsMassAPI"]
+            )
+            {
+                float physics:mass = 0.001
+                quatd xformOp:orient = (1, 0, 0, 0)
+                double3 xformOp:translate = (0, 0, -0.085)
+                uniform token[] xformOpOrder = ["xformOp:orient", "xformOp:translate"]
+
+                def Capsule "geom"
+                {
+                    double height = 0.008
+                    double radius = 0.004
+                }
+            }
+
+            def Xform "link_10" (
+                apiSchemas = ["PhysicsRigidBodyAPI", "PhysxRigidBodyAPI", "PhysicsMassAPI"]
+            )
+            {
+                float physics:mass = 0.001
+                quatd xformOp:orient = (1, 0, 0, 0)
+                double3 xformOp:translate = (0, 0, -0.095)
+                uniform token[] xformOpOrder = ["xformOp:orient", "xformOp:translate"]
+
+                def Capsule "geom"
+                {
+                    double height = 0.008
+                    double radius = 0.004
+                }
+            }
+
+            def Xform "link_11" (
+                apiSchemas = ["PhysicsRigidBodyAPI", "PhysxRigidBodyAPI", "PhysicsMassAPI"]
+            )
+            {
+                float physics:mass = 0.001
+                quatd xformOp:orient = (1, 0, 0, 0)
+                double3 xformOp:translate = (0, 0, -0.105)
+                uniform token[] xformOpOrder = ["xformOp:orient", "xformOp:translate"]
+
+                def Capsule "geom"
+                {
+                    double height = 0.008
+                    double radius = 0.004
+                }
+            }
+
+            def Xform "link_12" (
+                apiSchemas = ["PhysicsRigidBodyAPI", "PhysxRigidBodyAPI", "PhysicsMassAPI"]
+            )
+            {
+                float physics:mass = 0.001
+                quatd xformOp:orient = (1, 0, 0, 0)
+                double3 xformOp:translate = (0, 0, -0.115)
+                uniform token[] xformOpOrder = ["xformOp:orient", "xformOp:translate"]
+
+                def Capsule "geom"
+                {
+                    double height = 0.008
+                    double radius = 0.004
+                }
+            }
+
+            def Xform "link_13" (
+                apiSchemas = ["PhysicsRigidBodyAPI", "PhysxRigidBodyAPI", "PhysicsMassAPI"]
+            )
+            {
+                float physics:mass = 0.001
+                quatd xformOp:orient = (1, 0, 0, 0)
+                double3 xformOp:translate = (0, 0, -0.125)
+                uniform token[] xformOpOrder = ["xformOp:orient", "xformOp:translate"]
+
+                def Capsule "geom"
+                {
+                    double height = 0.008
+                    double radius = 0.004
+                }
+            }
+
+            def Xform "link_14" (
+                apiSchemas = ["PhysicsRigidBodyAPI", "PhysxRigidBodyAPI", "PhysicsMassAPI"]
+            )
+            {
+                float physics:mass = 0.001
+                quatd xformOp:orient = (1, 0, 0, 0)
+                double3 xformOp:translate = (0, 0, -0.135)
+                uniform token[] xformOpOrder = ["xformOp:orient", "xformOp:translate"]
+
+                def Capsule "geom"
+                {
+                    double height = 0.008
+                    double radius = 0.004
+                }
+            }
+
+            def Xform "link_15" (
+                apiSchemas = ["PhysicsRigidBodyAPI", "PhysxRigidBodyAPI", "PhysicsMassAPI"]
+            )
+            {
+                float physics:mass = 0.001
+                quatd xformOp:orient = (1, 0, 0, 0)
+                double3 xformOp:translate = (0, 0, -0.145)
+                uniform token[] xformOpOrder = ["xformOp:orient", "xformOp:translate"]
+
+                def Capsule "geom"
+                {
+                    double height = 0.008
+                    double radius = 0.004
+                }
+            }
+
+            def Xform "link_16" (
+                apiSchemas = ["PhysicsRigidBodyAPI", "PhysxRigidBodyAPI", "PhysicsMassAPI"]
+            )
+            {
+                float physics:mass = 0.001
+                quatd xformOp:orient = (1, 0, 0, 0)
+                double3 xformOp:translate = (0, 0, -0.155)
+                uniform token[] xformOpOrder = ["xformOp:orient", "xformOp:translate"]
+
+                def Capsule "geom"
+                {
+                    double height = 0.008
+                    double radius = 0.004
+                }
+            }
+
+            def Xform "link_17" (
+                apiSchemas = ["PhysicsRigidBodyAPI", "PhysxRigidBodyAPI", "PhysicsMassAPI"]
+            )
+            {
+                float physics:mass = 0.001
+                quatd xformOp:orient = (1, 0, 0, 0)
+                double3 xformOp:translate = (0, 0, -0.165)
+                uniform token[] xformOpOrder = ["xformOp:orient", "xformOp:translate"]
+
+                def Capsule "geom"
+                {
+                    double height = 0.008
+                    double radius = 0.004
+                }
+            }
+
+            def Xform "link_18" (
+                apiSchemas = ["PhysicsRigidBodyAPI", "PhysxRigidBodyAPI", "PhysicsMassAPI"]
+            )
+            {
+                float physics:mass = 0.001
+                quatd xformOp:orient = (1, 0, 0, 0)
+                double3 xformOp:translate = (0, 0, -0.175)
+                uniform token[] xformOpOrder = ["xformOp:orient", "xformOp:translate"]
+
+                def Capsule "geom"
+                {
+                    double height = 0.008
+                    double radius = 0.004
+                }
+            }
+
+            def Xform "link_19" (
+                apiSchemas = ["PhysicsRigidBodyAPI", "PhysxRigidBodyAPI", "PhysicsMassAPI"]
+            )
+            {
+                float physics:mass = 0.001
+                quatd xformOp:orient = (1, 0, 0, 0)
+                double3 xformOp:translate = (0, 0, -0.185)
+                uniform token[] xformOpOrder = ["xformOp:orient", "xformOp:translate"]
+
+                def Capsule "geom"
+                {
+                    double height = 0.008
+                    double radius = 0.004
+                }
+            }
+
+            def Xform "link_20" (
+                apiSchemas = ["PhysicsRigidBodyAPI", "PhysxRigidBodyAPI", "PhysicsMassAPI"]
+            )
+            {
+                float physics:mass = 0.001
+                quatd xformOp:orient = (1, 0, 0, 0)
+                double3 xformOp:translate = (0, 0, -0.195)
+                uniform token[] xformOpOrder = ["xformOp:orient", "xformOp:translate"]
+
+                def Capsule "geom"
+                {
+                    double height = 0.008
+                    double radius = 0.004
+                }
+            }
+
+            def Xform "link_21" (
+                apiSchemas = ["PhysicsRigidBodyAPI", "PhysxRigidBodyAPI", "PhysicsMassAPI"]
+            )
+            {
+                float physics:mass = 0.001
+                quatd xformOp:orient = (1, 0, 0, 0)
+                double3 xformOp:translate = (0, 0, -0.205)
+                uniform token[] xformOpOrder = ["xformOp:orient", "xformOp:translate"]
+
+                def Capsule "geom"
+                {
+                    double height = 0.008
+                    double radius = 0.004
+                }
+            }
+
+            def Xform "link_22" (
+                apiSchemas = ["PhysicsRigidBodyAPI", "PhysxRigidBodyAPI", "PhysicsMassAPI"]
+            )
+            {
+                float physics:mass = 0.001
+                quatd xformOp:orient = (1, 0, 0, 0)
+                double3 xformOp:translate = (0, 0, -0.215)
+                uniform token[] xformOpOrder = ["xformOp:orient", "xformOp:translate"]
+
+                def Capsule "geom"
+                {
+                    double height = 0.008
+                    double radius = 0.004
+                }
+            }
+
+            def Xform "link_23" (
+                apiSchemas = ["PhysicsRigidBodyAPI", "PhysxRigidBodyAPI", "PhysicsMassAPI"]
+            )
+            {
+                float physics:mass = 0.001
+                quatd xformOp:orient = (1, 0, 0, 0)
+                double3 xformOp:translate = (0, 0, -0.225)
+                uniform token[] xformOpOrder = ["xformOp:orient", "xformOp:translate"]
+
+                def Capsule "geom"
+                {
+                    double height = 0.008
+                    double radius = 0.004
+                }
+            }
+
+            def Xform "link_24" (
+                apiSchemas = ["PhysicsRigidBodyAPI", "PhysxRigidBodyAPI", "PhysicsMassAPI"]
+            )
+            {
+                float physics:mass = 0.001
+                quatd xformOp:orient = (1, 0, 0, 0)
+                double3 xformOp:translate = (0, 0, -0.235)
+                uniform token[] xformOpOrder = ["xformOp:orient", "xformOp:translate"]
+
+                def Capsule "geom"
+                {
+                    double height = 0.008
+                    double radius = 0.004
+                }
+            }
+
+            def Xform "link_25" (
+                apiSchemas = ["PhysicsRigidBodyAPI", "PhysxRigidBodyAPI", "PhysicsMassAPI"]
+            )
+            {
+                float physics:mass = 0.001
+                quatd xformOp:orient = (1, 0, 0, 0)
+                double3 xformOp:translate = (0, 0, -0.245)
+                uniform token[] xformOpOrder = ["xformOp:orient", "xformOp:translate"]
+
+                def Capsule "geom"
+                {
+                    double height = 0.008
+                    double radius = 0.004
+                }
+            }
+
+            def Xform "link_26" (
+                apiSchemas = ["PhysicsRigidBodyAPI", "PhysxRigidBodyAPI", "PhysicsMassAPI"]
+            )
+            {
+                float physics:mass = 0.001
+                quatd xformOp:orient = (1, 0, 0, 0)
+                double3 xformOp:translate = (0, 0, -0.255)
+                uniform token[] xformOpOrder = ["xformOp:orient", "xformOp:translate"]
+
+                def Capsule "geom"
+                {
+                    double height = 0.008
+                    double radius = 0.004
+                }
+            }
+
+            def Xform "link_27" (
+                apiSchemas = ["PhysicsRigidBodyAPI", "PhysxRigidBodyAPI", "PhysicsMassAPI"]
+            )
+            {
+                float physics:mass = 0.001
+                quatd xformOp:orient = (1, 0, 0, 0)
+                double3 xformOp:translate = (0, 0, -0.265)
+                uniform token[] xformOpOrder = ["xformOp:orient", "xformOp:translate"]
+
+                def Capsule "geom"
+                {
+                    double height = 0.008
+                    double radius = 0.004
+                }
+            }
+
+            def Xform "link_28" (
+                apiSchemas = ["PhysicsRigidBodyAPI", "PhysxRigidBodyAPI", "PhysicsMassAPI"]
+            )
+            {
+                float physics:mass = 0.001
+                quatd xformOp:orient = (1, 0, 0, 0)
+                double3 xformOp:translate = (0, 0, -0.275)
+                uniform token[] xformOpOrder = ["xformOp:orient", "xformOp:translate"]
+
+                def Capsule "geom"
+                {
+                    double height = 0.008
+                    double radius = 0.004
+                }
+            }
+
+            def Xform "link_29" (
+                apiSchemas = ["PhysicsRigidBodyAPI", "PhysxRigidBodyAPI", "PhysicsMassAPI"]
+            )
+            {
+                float physics:mass = 0.001
+                quatd xformOp:orient = (1, 0, 0, 0)
+                double3 xformOp:translate = (0, 0, -0.285)
+                uniform token[] xformOpOrder = ["xformOp:orient", "xformOp:translate"]
+
+                def Capsule "geom"
+                {
+                    double height = 0.008
+                    double radius = 0.004
+                }
+            }
+
+            def Xform "link_30" (
+                apiSchemas = ["PhysicsRigidBodyAPI", "PhysxRigidBodyAPI", "PhysicsMassAPI"]
+            )
+            {
+                float physics:mass = 0.001
+                quatd xformOp:orient = (1, 0, 0, 0)
+                double3 xformOp:translate = (0, 0, -0.295)
+                uniform token[] xformOpOrder = ["xformOp:orient", "xformOp:translate"]
+
+                def Capsule "geom"
+                {
+                    double height = 0.008
+                    double radius = 0.004
+                }
+            }
+
+            def Xform "link_31" (
+                apiSchemas = ["PhysicsRigidBodyAPI", "PhysxRigidBodyAPI", "PhysicsMassAPI"]
+            )
+            {
+                float physics:mass = 0.001
+                quatd xformOp:orient = (1, 0, 0, 0)
+                double3 xformOp:translate = (0, 0, -0.305)
+                uniform token[] xformOpOrder = ["xformOp:orient", "xformOp:translate"]
+
+                def Capsule "geom"
+                {
+                    double height = 0.008
+                    double radius = 0.004
+                }
+            }
+
+            def Xform "link_32" (
+                apiSchemas = ["PhysicsRigidBodyAPI", "PhysxRigidBodyAPI", "PhysicsMassAPI"]
+            )
+            {
+                float physics:mass = 0.001
+                quatd xformOp:orient = (1, 0, 0, 0)
+                double3 xformOp:translate = (0, 0, -0.315)
+                uniform token[] xformOpOrder = ["xformOp:orient", "xformOp:translate"]
+
+                def Capsule "geom"
+                {
+                    double height = 0.008
+                    double radius = 0.004
+                }
+            }
+
+            def Xform "link_33" (
+                apiSchemas = ["PhysicsRigidBodyAPI", "PhysxRigidBodyAPI", "PhysicsMassAPI"]
+            )
+            {
+                float physics:mass = 0.001
+                quatd xformOp:orient = (1, 0, 0, 0)
+                double3 xformOp:translate = (0, 0, -0.325)
+                uniform token[] xformOpOrder = ["xformOp:orient", "xformOp:translate"]
+
+                def Capsule "geom"
+                {
+                    double height = 0.008
+                    double radius = 0.004
+                }
+            }
+
+            def Xform "link_34" (
+                apiSchemas = ["PhysicsRigidBodyAPI", "PhysxRigidBodyAPI", "PhysicsMassAPI"]
+            )
+            {
+                float physics:mass = 0.001
+                quatd xformOp:orient = (1, 0, 0, 0)
+                double3 xformOp:translate = (0, 0, -0.335)
+                uniform token[] xformOpOrder = ["xformOp:orient", "xformOp:translate"]
+
+                def Capsule "geom"
+                {
+                    double height = 0.008
+                    double radius = 0.004
+                }
+            }
+
+            def Xform "link_35" (
+                apiSchemas = ["PhysicsRigidBodyAPI", "PhysxRigidBodyAPI", "PhysicsMassAPI"]
+            )
+            {
+                float physics:mass = 0.001
+                quatd xformOp:orient = (1, 0, 0, 0)
+                double3 xformOp:translate = (0, 0, -0.345)
+                uniform token[] xformOpOrder = ["xformOp:orient", "xformOp:translate"]
+
+                def Capsule "geom"
+                {
+                    double height = 0.008
+                    double radius = 0.004
+                }
+            }
+
+            def Xform "link_36" (
+                apiSchemas = ["PhysicsRigidBodyAPI", "PhysxRigidBodyAPI", "PhysicsMassAPI"]
+            )
+            {
+                float physics:mass = 0.001
+                quatd xformOp:orient = (1, 0, 0, 0)
+                double3 xformOp:translate = (0, 0, -0.355)
+                uniform token[] xformOpOrder = ["xformOp:orient", "xformOp:translate"]
+
+                def Capsule "geom"
+                {
+                    double height = 0.008
+                    double radius = 0.004
+                }
+            }
+
+            def Xform "link_37" (
+                apiSchemas = ["PhysicsRigidBodyAPI", "PhysxRigidBodyAPI", "PhysicsMassAPI"]
+            )
+            {
+                float physics:mass = 0.001
+                quatd xformOp:orient = (1, 0, 0, 0)
+                double3 xformOp:translate = (0, 0, -0.365)
+                uniform token[] xformOpOrder = ["xformOp:orient", "xformOp:translate"]
+
+                def Capsule "geom"
+                {
+                    double height = 0.008
+                    double radius = 0.004
+                }
+            }
+
+            def Xform "link_38" (
+                apiSchemas = ["PhysicsRigidBodyAPI", "PhysxRigidBodyAPI", "PhysicsMassAPI"]
+            )
+            {
+                float physics:mass = 0.001
+                quatd xformOp:orient = (1, 0, 0, 0)
+                double3 xformOp:translate = (0, 0, -0.375)
+                uniform token[] xformOpOrder = ["xformOp:orient", "xformOp:translate"]
+
+                def Capsule "geom"
+                {
+                    double height = 0.008
+                    double radius = 0.004
+                }
+            }
+
+            def Xform "link_39" (
+                apiSchemas = ["PhysicsRigidBodyAPI", "PhysxRigidBodyAPI", "PhysicsMassAPI"]
+            )
+            {
+                float physics:mass = 0.001
+                quatd xformOp:orient = (1, 0, 0, 0)
+                double3 xformOp:translate = (0, 0, -0.385)
+                uniform token[] xformOpOrder = ["xformOp:orient", "xformOp:translate"]
+
+                def Capsule "geom"
+                {
+                    double height = 0.008
+                    double radius = 0.004
+                }
+            }
+
+            def Xform "link_40" (
+                apiSchemas = ["PhysicsRigidBodyAPI", "PhysxRigidBodyAPI", "PhysicsMassAPI"]
+            )
+            {
+                float physics:mass = 0.001
+                quatd xformOp:orient = (1, 0, 0, 0)
+                double3 xformOp:translate = (0, 0, -0.395)
+                uniform token[] xformOpOrder = ["xformOp:orient", "xformOp:translate"]
+
+                def Capsule "geom"
+                {
+                    double height = 0.008
+                    double radius = 0.004
+                }
+            }
+
+            def Xform "link_41" (
+                apiSchemas = ["PhysicsRigidBodyAPI", "PhysxRigidBodyAPI", "PhysicsMassAPI"]
+            )
+            {
+                float physics:mass = 0.001
+                quatd xformOp:orient = (1, 0, 0, 0)
+                double3 xformOp:translate = (0, 0, -0.405)
+                uniform token[] xformOpOrder = ["xformOp:orient", "xformOp:translate"]
+
+                def Capsule "geom"
+                {
+                    double height = 0.008
+                    double radius = 0.004
+                }
+            }
+
+            def Xform "link_42" (
+                apiSchemas = ["PhysicsRigidBodyAPI", "PhysxRigidBodyAPI", "PhysicsMassAPI"]
+            )
+            {
+                float physics:mass = 0.001
+                quatd xformOp:orient = (1, 0, 0, 0)
+                double3 xformOp:translate = (0, 0, -0.415)
+                uniform token[] xformOpOrder = ["xformOp:orient", "xformOp:translate"]
+
+                def Capsule "geom"
+                {
+                    double height = 0.008
+                    double radius = 0.004
+                }
+            }
+
+            def PhysicsSphericalJoint "rope_joint_01" (
+                apiSchemas = ["PhysxJointAPI"]
+            )
+            {
+                rel physics:body0 = </Root/custom_drone/rope/link_01>
+                rel physics:body1 = </Root/custom_drone/rope/link_02>
+                float physics:breakForce = inf
+                float physics:breakTorque = inf
+                point3f physics:localPos0 = (0, 0, -0.005)
+                point3f physics:localPos1 = (0, 0, 0.005)
+                bool physxJoint:enableCollision = 0
+            }
+
+            def PhysicsSphericalJoint "rope_joint_02" (
+                apiSchemas = ["PhysxJointAPI"]
+            )
+            {
+                rel physics:body0 = </Root/custom_drone/rope/link_02>
+                rel physics:body1 = </Root/custom_drone/rope/link_03>
+                float physics:breakForce = inf
+                float physics:breakTorque = inf
+                point3f physics:localPos0 = (0, 0, -0.005)
+                point3f physics:localPos1 = (0, 0, 0.005)
+                bool physxJoint:enableCollision = 0
+            }
+
+            def PhysicsSphericalJoint "rope_joint_03" (
+                apiSchemas = ["PhysxJointAPI"]
+            )
+            {
+                rel physics:body0 = </Root/custom_drone/rope/link_03>
+                rel physics:body1 = </Root/custom_drone/rope/link_04>
+                float physics:breakForce = inf
+                float physics:breakTorque = inf
+                point3f physics:localPos0 = (0, 0, -0.005)
+                point3f physics:localPos1 = (0, 0, 0.005)
+                bool physxJoint:enableCollision = 0
+            }
+
+            def PhysicsSphericalJoint "rope_joint_04" (
+                apiSchemas = ["PhysxJointAPI"]
+            )
+            {
+                rel physics:body0 = </Root/custom_drone/rope/link_04>
+                rel physics:body1 = </Root/custom_drone/rope/link_05>
+                float physics:breakForce = inf
+                float physics:breakTorque = inf
+                point3f physics:localPos0 = (0, 0, -0.005)
+                point3f physics:localPos1 = (0, 0, 0.005)
+                bool physxJoint:enableCollision = 0
+            }
+
+            def PhysicsSphericalJoint "rope_joint_05" (
+                apiSchemas = ["PhysxJointAPI"]
+            )
+            {
+                rel physics:body0 = </Root/custom_drone/rope/link_05>
+                rel physics:body1 = </Root/custom_drone/rope/link_06>
+                float physics:breakForce = inf
+                float physics:breakTorque = inf
+                point3f physics:localPos0 = (0, 0, -0.005)
+                point3f physics:localPos1 = (0, 0, 0.005)
+                bool physxJoint:enableCollision = 0
+            }
+
+            def PhysicsSphericalJoint "rope_joint_06" (
+                apiSchemas = ["PhysxJointAPI"]
+            )
+            {
+                rel physics:body0 = </Root/custom_drone/rope/link_06>
+                rel physics:body1 = </Root/custom_drone/rope/link_07>
+                float physics:breakForce = inf
+                float physics:breakTorque = inf
+                point3f physics:localPos0 = (0, 0, -0.005)
+                point3f physics:localPos1 = (0, 0, 0.005)
+                bool physxJoint:enableCollision = 0
+            }
+
+            def PhysicsSphericalJoint "rope_joint_07" (
+                apiSchemas = ["PhysxJointAPI"]
+            )
+            {
+                rel physics:body0 = </Root/custom_drone/rope/link_07>
+                rel physics:body1 = </Root/custom_drone/rope/link_08>
+                float physics:breakForce = inf
+                float physics:breakTorque = inf
+                point3f physics:localPos0 = (0, 0, -0.005)
+                point3f physics:localPos1 = (0, 0, 0.005)
+                bool physxJoint:enableCollision = 0
+            }
+
+            def PhysicsSphericalJoint "rope_joint_08" (
+                apiSchemas = ["PhysxJointAPI"]
+            )
+            {
+                rel physics:body0 = </Root/custom_drone/rope/link_08>
+                rel physics:body1 = </Root/custom_drone/rope/link_09>
+                float physics:breakForce = inf
+                float physics:breakTorque = inf
+                point3f physics:localPos0 = (0, 0, -0.005)
+                point3f physics:localPos1 = (0, 0, 0.005)
+                bool physxJoint:enableCollision = 0
+            }
+
+            def PhysicsSphericalJoint "rope_joint_09" (
+                apiSchemas = ["PhysxJointAPI"]
+            )
+            {
+                rel physics:body0 = </Root/custom_drone/rope/link_09>
+                rel physics:body1 = </Root/custom_drone/rope/link_10>
+                float physics:breakForce = inf
+                float physics:breakTorque = inf
+                point3f physics:localPos0 = (0, 0, -0.005)
+                point3f physics:localPos1 = (0, 0, 0.005)
+                bool physxJoint:enableCollision = 0
+            }
+
+            def PhysicsSphericalJoint "rope_joint_10" (
+                apiSchemas = ["PhysxJointAPI"]
+            )
+            {
+                rel physics:body0 = </Root/custom_drone/rope/link_10>
+                rel physics:body1 = </Root/custom_drone/rope/link_11>
+                float physics:breakForce = inf
+                float physics:breakTorque = inf
+                point3f physics:localPos0 = (0, 0, -0.005)
+                point3f physics:localPos1 = (0, 0, 0.005)
+                bool physxJoint:enableCollision = 0
+            }
+
+            def PhysicsSphericalJoint "rope_joint_11" (
+                apiSchemas = ["PhysxJointAPI"]
+            )
+            {
+                rel physics:body0 = </Root/custom_drone/rope/link_11>
+                rel physics:body1 = </Root/custom_drone/rope/link_12>
+                float physics:breakForce = inf
+                float physics:breakTorque = inf
+                point3f physics:localPos0 = (0, 0, -0.005)
+                point3f physics:localPos1 = (0, 0, 0.005)
+                bool physxJoint:enableCollision = 0
+            }
+
+            def PhysicsSphericalJoint "rope_joint_12" (
+                apiSchemas = ["PhysxJointAPI"]
+            )
+            {
+                rel physics:body0 = </Root/custom_drone/rope/link_12>
+                rel physics:body1 = </Root/custom_drone/rope/link_13>
+                float physics:breakForce = inf
+                float physics:breakTorque = inf
+                point3f physics:localPos0 = (0, 0, -0.005)
+                point3f physics:localPos1 = (0, 0, 0.005)
+                bool physxJoint:enableCollision = 0
+            }
+
+            def PhysicsSphericalJoint "rope_joint_13" (
+                apiSchemas = ["PhysxJointAPI"]
+            )
+            {
+                rel physics:body0 = </Root/custom_drone/rope/link_13>
+                rel physics:body1 = </Root/custom_drone/rope/link_14>
+                float physics:breakForce = inf
+                float physics:breakTorque = inf
+                point3f physics:localPos0 = (0, 0, -0.005)
+                point3f physics:localPos1 = (0, 0, 0.005)
+                bool physxJoint:enableCollision = 0
+            }
+
+            def PhysicsSphericalJoint "rope_joint_14" (
+                apiSchemas = ["PhysxJointAPI"]
+            )
+            {
+                rel physics:body0 = </Root/custom_drone/rope/link_14>
+                rel physics:body1 = </Root/custom_drone/rope/link_15>
+                float physics:breakForce = inf
+                float physics:breakTorque = inf
+                point3f physics:localPos0 = (0, 0, -0.005)
+                point3f physics:localPos1 = (0, 0, 0.005)
+                bool physxJoint:enableCollision = 0
+            }
+
+            def PhysicsSphericalJoint "rope_joint_15" (
+                apiSchemas = ["PhysxJointAPI"]
+            )
+            {
+                rel physics:body0 = </Root/custom_drone/rope/link_15>
+                rel physics:body1 = </Root/custom_drone/rope/link_16>
+                float physics:breakForce = inf
+                float physics:breakTorque = inf
+                point3f physics:localPos0 = (0, 0, -0.005)
+                point3f physics:localPos1 = (0, 0, 0.005)
+                bool physxJoint:enableCollision = 0
+            }
+
+            def PhysicsSphericalJoint "rope_joint_16" (
+                apiSchemas = ["PhysxJointAPI"]
+            )
+            {
+                rel physics:body0 = </Root/custom_drone/rope/link_16>
+                rel physics:body1 = </Root/custom_drone/rope/link_17>
+                float physics:breakForce = inf
+                float physics:breakTorque = inf
+                point3f physics:localPos0 = (0, 0, -0.005)
+                point3f physics:localPos1 = (0, 0, 0.005)
+                bool physxJoint:enableCollision = 0
+            }
+
+            def PhysicsSphericalJoint "rope_joint_17" (
+                apiSchemas = ["PhysxJointAPI"]
+            )
+            {
+                rel physics:body0 = </Root/custom_drone/rope/link_17>
+                rel physics:body1 = </Root/custom_drone/rope/link_18>
+                float physics:breakForce = inf
+                float physics:breakTorque = inf
+                point3f physics:localPos0 = (0, 0, -0.005)
+                point3f physics:localPos1 = (0, 0, 0.005)
+                bool physxJoint:enableCollision = 0
+            }
+
+            def PhysicsSphericalJoint "rope_joint_18" (
+                apiSchemas = ["PhysxJointAPI"]
+            )
+            {
+                rel physics:body0 = </Root/custom_drone/rope/link_18>
+                rel physics:body1 = </Root/custom_drone/rope/link_19>
+                float physics:breakForce = inf
+                float physics:breakTorque = inf
+                point3f physics:localPos0 = (0, 0, -0.005)
+                point3f physics:localPos1 = (0, 0, 0.005)
+                bool physxJoint:enableCollision = 0
+            }
+
+            def PhysicsSphericalJoint "rope_joint_19" (
+                apiSchemas = ["PhysxJointAPI"]
+            )
+            {
+                rel physics:body0 = </Root/custom_drone/rope/link_19>
+                rel physics:body1 = </Root/custom_drone/rope/link_20>
+                float physics:breakForce = inf
+                float physics:breakTorque = inf
+                point3f physics:localPos0 = (0, 0, -0.005)
+                point3f physics:localPos1 = (0, 0, 0.005)
+                bool physxJoint:enableCollision = 0
+            }
+
+            def PhysicsSphericalJoint "rope_joint_20" (
+                apiSchemas = ["PhysxJointAPI"]
+            )
+            {
+                rel physics:body0 = </Root/custom_drone/rope/link_20>
+                rel physics:body1 = </Root/custom_drone/rope/link_21>
+                float physics:breakForce = inf
+                float physics:breakTorque = inf
+                point3f physics:localPos0 = (0, 0, -0.005)
+                point3f physics:localPos1 = (0, 0, 0.005)
+                bool physxJoint:enableCollision = 0
+            }
+
+            def PhysicsSphericalJoint "rope_joint_21" (
+                apiSchemas = ["PhysxJointAPI"]
+            )
+            {
+                rel physics:body0 = </Root/custom_drone/rope/link_21>
+                rel physics:body1 = </Root/custom_drone/rope/link_22>
+                float physics:breakForce = inf
+                float physics:breakTorque = inf
+                point3f physics:localPos0 = (0, 0, -0.005)
+                point3f physics:localPos1 = (0, 0, 0.005)
+                bool physxJoint:enableCollision = 0
+            }
+
+            def PhysicsSphericalJoint "rope_joint_22" (
+                apiSchemas = ["PhysxJointAPI"]
+            )
+            {
+                rel physics:body0 = </Root/custom_drone/rope/link_22>
+                rel physics:body1 = </Root/custom_drone/rope/link_23>
+                float physics:breakForce = inf
+                float physics:breakTorque = inf
+                point3f physics:localPos0 = (0, 0, -0.005)
+                point3f physics:localPos1 = (0, 0, 0.005)
+                bool physxJoint:enableCollision = 0
+            }
+
+            def PhysicsSphericalJoint "rope_joint_23" (
+                apiSchemas = ["PhysxJointAPI"]
+            )
+            {
+                rel physics:body0 = </Root/custom_drone/rope/link_23>
+                rel physics:body1 = </Root/custom_drone/rope/link_24>
+                float physics:breakForce = inf
+                float physics:breakTorque = inf
+                point3f physics:localPos0 = (0, 0, -0.005)
+                point3f physics:localPos1 = (0, 0, 0.005)
+                bool physxJoint:enableCollision = 0
+            }
+
+            def PhysicsSphericalJoint "rope_joint_24" (
+                apiSchemas = ["PhysxJointAPI"]
+            )
+            {
+                rel physics:body0 = </Root/custom_drone/rope/link_24>
+                rel physics:body1 = </Root/custom_drone/rope/link_25>
+                float physics:breakForce = inf
+                float physics:breakTorque = inf
+                point3f physics:localPos0 = (0, 0, -0.005)
+                point3f physics:localPos1 = (0, 0, 0.005)
+                bool physxJoint:enableCollision = 0
+            }
+
+            def PhysicsSphericalJoint "rope_joint_25" (
+                apiSchemas = ["PhysxJointAPI"]
+            )
+            {
+                rel physics:body0 = </Root/custom_drone/rope/link_25>
+                rel physics:body1 = </Root/custom_drone/rope/link_26>
+                float physics:breakForce = inf
+                float physics:breakTorque = inf
+                point3f physics:localPos0 = (0, 0, -0.005)
+                point3f physics:localPos1 = (0, 0, 0.005)
+                bool physxJoint:enableCollision = 0
+            }
+
+            def PhysicsSphericalJoint "rope_joint_26" (
+                apiSchemas = ["PhysxJointAPI"]
+            )
+            {
+                rel physics:body0 = </Root/custom_drone/rope/link_26>
+                rel physics:body1 = </Root/custom_drone/rope/link_27>
+                float physics:breakForce = inf
+                float physics:breakTorque = inf
+                point3f physics:localPos0 = (0, 0, -0.005)
+                point3f physics:localPos1 = (0, 0, 0.005)
+                bool physxJoint:enableCollision = 0
+            }
+
+            def PhysicsSphericalJoint "rope_joint_27" (
+                apiSchemas = ["PhysxJointAPI"]
+            )
+            {
+                rel physics:body0 = </Root/custom_drone/rope/link_27>
+                rel physics:body1 = </Root/custom_drone/rope/link_28>
+                float physics:breakForce = inf
+                float physics:breakTorque = inf
+                point3f physics:localPos0 = (0, 0, -0.005)
+                point3f physics:localPos1 = (0, 0, 0.005)
+                bool physxJoint:enableCollision = 0
+            }
+
+            def PhysicsSphericalJoint "rope_joint_28" (
+                apiSchemas = ["PhysxJointAPI"]
+            )
+            {
+                rel physics:body0 = </Root/custom_drone/rope/link_28>
+                rel physics:body1 = </Root/custom_drone/rope/link_29>
+                float physics:breakForce = inf
+                float physics:breakTorque = inf
+                point3f physics:localPos0 = (0, 0, -0.005)
+                point3f physics:localPos1 = (0, 0, 0.005)
+                bool physxJoint:enableCollision = 0
+            }
+
+            def PhysicsSphericalJoint "rope_joint_29" (
+                apiSchemas = ["PhysxJointAPI"]
+            )
+            {
+                rel physics:body0 = </Root/custom_drone/rope/link_29>
+                rel physics:body1 = </Root/custom_drone/rope/link_30>
+                float physics:breakForce = inf
+                float physics:breakTorque = inf
+                point3f physics:localPos0 = (0, 0, -0.005)
+                point3f physics:localPos1 = (0, 0, 0.005)
+                bool physxJoint:enableCollision = 0
+            }
+
+            def PhysicsSphericalJoint "rope_joint_30" (
+                apiSchemas = ["PhysxJointAPI"]
+            )
+            {
+                rel physics:body0 = </Root/custom_drone/rope/link_30>
+                rel physics:body1 = </Root/custom_drone/rope/link_31>
+                float physics:breakForce = inf
+                float physics:breakTorque = inf
+                point3f physics:localPos0 = (0, 0, -0.005)
+                point3f physics:localPos1 = (0, 0, 0.005)
+                bool physxJoint:enableCollision = 0
+            }
+
+            def PhysicsSphericalJoint "rope_joint_31" (
+                apiSchemas = ["PhysxJointAPI"]
+            )
+            {
+                rel physics:body0 = </Root/custom_drone/rope/link_31>
+                rel physics:body1 = </Root/custom_drone/rope/link_32>
+                float physics:breakForce = inf
+                float physics:breakTorque = inf
+                point3f physics:localPos0 = (0, 0, -0.005)
+                point3f physics:localPos1 = (0, 0, 0.005)
+                bool physxJoint:enableCollision = 0
+            }
+
+            def PhysicsSphericalJoint "rope_joint_32" (
+                apiSchemas = ["PhysxJointAPI"]
+            )
+            {
+                rel physics:body0 = </Root/custom_drone/rope/link_32>
+                rel physics:body1 = </Root/custom_drone/rope/link_33>
+                float physics:breakForce = inf
+                float physics:breakTorque = inf
+                point3f physics:localPos0 = (0, 0, -0.005)
+                point3f physics:localPos1 = (0, 0, 0.005)
+                bool physxJoint:enableCollision = 0
+            }
+
+            def PhysicsSphericalJoint "rope_joint_33" (
+                apiSchemas = ["PhysxJointAPI"]
+            )
+            {
+                rel physics:body0 = </Root/custom_drone/rope/link_33>
+                rel physics:body1 = </Root/custom_drone/rope/link_34>
+                float physics:breakForce = inf
+                float physics:breakTorque = inf
+                point3f physics:localPos0 = (0, 0, -0.005)
+                point3f physics:localPos1 = (0, 0, 0.005)
+                bool physxJoint:enableCollision = 0
+            }
+
+            def PhysicsSphericalJoint "rope_joint_34" (
+                apiSchemas = ["PhysxJointAPI"]
+            )
+            {
+                rel physics:body0 = </Root/custom_drone/rope/link_34>
+                rel physics:body1 = </Root/custom_drone/rope/link_35>
+                float physics:breakForce = inf
+                float physics:breakTorque = inf
+                point3f physics:localPos0 = (0, 0, -0.005)
+                point3f physics:localPos1 = (0, 0, 0.005)
+                bool physxJoint:enableCollision = 0
+            }
+
+            def PhysicsSphericalJoint "rope_joint_35" (
+                apiSchemas = ["PhysxJointAPI"]
+            )
+            {
+                rel physics:body0 = </Root/custom_drone/rope/link_35>
+                rel physics:body1 = </Root/custom_drone/rope/link_36>
+                float physics:breakForce = inf
+                float physics:breakTorque = inf
+                point3f physics:localPos0 = (0, 0, -0.005)
+                point3f physics:localPos1 = (0, 0, 0.005)
+                bool physxJoint:enableCollision = 0
+            }
+
+            def PhysicsSphericalJoint "rope_joint_36" (
+                apiSchemas = ["PhysxJointAPI"]
+            )
+            {
+                rel physics:body0 = </Root/custom_drone/rope/link_36>
+                rel physics:body1 = </Root/custom_drone/rope/link_37>
+                float physics:breakForce = inf
+                float physics:breakTorque = inf
+                point3f physics:localPos0 = (0, 0, -0.005)
+                point3f physics:localPos1 = (0, 0, 0.005)
+                bool physxJoint:enableCollision = 0
+            }
+
+            def PhysicsSphericalJoint "rope_joint_37" (
+                apiSchemas = ["PhysxJointAPI"]
+            )
+            {
+                rel physics:body0 = </Root/custom_drone/rope/link_37>
+                rel physics:body1 = </Root/custom_drone/rope/link_38>
+                float physics:breakForce = inf
+                float physics:breakTorque = inf
+                point3f physics:localPos0 = (0, 0, -0.005)
+                point3f physics:localPos1 = (0, 0, 0.005)
+                bool physxJoint:enableCollision = 0
+            }
+
+            def PhysicsSphericalJoint "rope_joint_38" (
+                apiSchemas = ["PhysxJointAPI"]
+            )
+            {
+                rel physics:body0 = </Root/custom_drone/rope/link_38>
+                rel physics:body1 = </Root/custom_drone/rope/link_39>
+                float physics:breakForce = inf
+                float physics:breakTorque = inf
+                point3f physics:localPos0 = (0, 0, -0.005)
+                point3f physics:localPos1 = (0, 0, 0.005)
+                bool physxJoint:enableCollision = 0
+            }
+
+            def PhysicsSphericalJoint "rope_joint_39" (
+                apiSchemas = ["PhysxJointAPI"]
+            )
+            {
+                rel physics:body0 = </Root/custom_drone/rope/link_39>
+                rel physics:body1 = </Root/custom_drone/rope/link_40>
+                float physics:breakForce = inf
+                float physics:breakTorque = inf
+                point3f physics:localPos0 = (0, 0, -0.005)
+                point3f physics:localPos1 = (0, 0, 0.005)
+                bool physxJoint:enableCollision = 0
+            }
+
+            def PhysicsSphericalJoint "rope_joint_40" (
+                apiSchemas = ["PhysxJointAPI"]
+            )
+            {
+                rel physics:body0 = </Root/custom_drone/rope/link_40>
+                rel physics:body1 = </Root/custom_drone/rope/link_41>
+                float physics:breakForce = inf
+                float physics:breakTorque = inf
+                point3f physics:localPos0 = (0, 0, -0.005)
+                point3f physics:localPos1 = (0, 0, 0.005)
+                bool physxJoint:enableCollision = 0
+            }
+
+            def PhysicsSphericalJoint "rope_joint_41" (
+                apiSchemas = ["PhysxJointAPI"]
+            )
+            {
+                rel physics:body0 = </Root/custom_drone/rope/link_41>
+                rel physics:body1 = </Root/custom_drone/rope/link_42>
+                float physics:breakForce = inf
+                float physics:breakTorque = inf
+                point3f physics:localPos0 = (0, 0, -0.005)
+                point3f physics:localPos1 = (0, 0, 0.005)
+                bool physxJoint:enableCollision = 0
+            }
+
+            def PhysicsSphericalJoint "rope_joint_42" (
+                apiSchemas = ["PhysxJointAPI"]
+            )
+            {
+                rel physics:body0 = </Root/custom_drone/rope/link_42>
+                rel physics:body1 = </Root/custom_drone/payload>
+                float physics:breakForce = inf
+                float physics:breakTorque = inf
+                point3f physics:localPos0 = (0, 0, -0.005)
+                point3f physics:localPos1 = (0, 0, 0)
+                bool physxJoint:enableCollision = 0
             }
         }
     }

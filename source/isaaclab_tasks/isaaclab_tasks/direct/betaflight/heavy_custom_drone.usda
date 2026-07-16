@@ -25,7 +25,7 @@ def Xform "Root"
         {
             point3f physics:centerOfMass = (0, 0, 0)
             float3 physics:diagonalInertia = (0.001744744189, 0.001400539551, 0.002782410904)
-            float physics:mass = 0.56
+            float physics:mass = 0.6
             quatf physics:principalAxes = (1, 0, 0, 0)
             float3 xformOp:rotateXYZ = (0, 0, 0)
             double3 xformOp:translate = (0, 0, 0)

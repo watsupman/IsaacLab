@@ -60,7 +60,6 @@ class BetaflightEnv(DirectRLEnv):
             "max_pairwise_separation", "max_separation_penalty_scale",
             "terminate_on_max_separation_exceeded",
             "terminate_on_collision",
-
             # Misc
             "debug_vis",
         ]
@@ -91,6 +90,10 @@ class BetaflightEnv(DirectRLEnv):
         self._max_ang_vel = math.pi * self.cfg.max_ang_vel_deg_s / 180.0  # rad/s
         self._ang_vel_tau = self.cfg.ang_vel_tau
         self._thrust_tau = self.cfg.thrust_tau
+
+        # --- VIRTUAL PAYLOAD (green square marker) ---
+        self._payload_offset = torch.tensor([0.0, 0.0, -0.30], device=self.device)  # 30cm below center
+        self._payload_pos_w = torch.zeros(self.num_envs, 3, device=self.device)
 
         # Goal sequencing / custom starts
         self._custom_goal = None
@@ -268,6 +271,10 @@ class BetaflightEnv(DirectRLEnv):
             # Formation center and average yaw
             stack_pos = torch.stack(pos_w, dim=1)              # [N_env, N, 3]
             center_pos_w = stack_pos.mean(dim=1)               # [N_env, 3]
+
+            # --- Update virtual payload world position (30 cm below center) ---
+            self._payload_pos_w = center_pos_w + self._payload_offset
+
             yaws = [self._yaw_from_quat_wxyz(q) for q in quat_w]
             yaw_mat = torch.stack(yaws, dim=1)                 # [N_env, N]
             avg_yaw = torch.atan2(torch.sin(yaw_mat).mean(dim=1), torch.cos(yaw_mat).mean(dim=1))
@@ -288,17 +295,16 @@ class BetaflightEnv(DirectRLEnv):
             # Observation: each robot's local states + center-goal vector + heading
                         
             # --- K-nearest neighbor relative vectors (per robot) ---
-            K = getattr(self, "_neighbors_k_eff", max(0, int(getattr(self.cfg, "neighbors_k", 2))))# Pairwise relative vectors and distances in WORLD frame: [B, N, N, 3] and [B, N, N]
+            K = getattr(self, "_neighbors_k_eff", max(0, int(getattr(self.cfg, "neighbors_k", 2))))
+            # Pairwise relative vectors in WORLD frame: [B, N, N, 3]
             rel_ij_w = stack_pos.unsqueeze(2) - stack_pos.unsqueeze(1)
             dist_ij = torch.linalg.norm(rel_ij_w, dim=-1) + torch.eye(self._num_robots, device=self.device)[None,...]*1e6
-            # Indices of K nearest neighbors per robot (exclude self via large diag)
             
             if K > 0:
                 # Provisional KNN by distance (exclude self via large diag)
                 knn_idx = torch.topk(-dist_ij, k=K, dim=2).indices  # [B, N, K]
 
-                # --- Stable ordering for neighbors to avoid tie flip-flops on symmetric rings ---
-                # Sort selected neighbors by bearing in robot-i body frame (clockwise from +X_b)
+                # Stable ordering for neighbors to avoid tie flip-flops on symmetric rings
                 rows = torch.arange(stack_pos.shape[0], device=self.device)[:, None, None]
                 cols = torch.arange(self._num_robots, device=self.device)[None, :, None]
                 rel_knn_w_tmp = rel_ij_w[rows, cols, knn_idx]  # [B,N,K,3]
@@ -317,6 +323,8 @@ class BetaflightEnv(DirectRLEnv):
                 knn_idx = torch.empty((stack_pos.shape[0], self._num_robots, 0), dtype=torch.long, device=self.device)  # [B,N,0]
             # Yaw of each robot: [B, N]
             # Build per-robot rotation to body frame for its neighbors
+            yaws = [self._yaw_from_quat_wxyz(q) for q in quat_w]
+            yaw_mat = torch.stack(yaws, dim=1)  # [B,N]
             c_i = torch.cos(yaw_mat)[:, :, None]  # [B,N,1]
             s_i = torch.sin(yaw_mat)[:, :, None]
             # Gather relative vectors to K neighbors: [B, N, K, 3]
@@ -340,6 +348,9 @@ class BetaflightEnv(DirectRLEnv):
         else:
             quad_pos_w = self._robot.data.root_state_w[:, :3]
             quad_quat_w = self._robot.data.root_state_w[:, 3:7]
+
+            # Update payload below the single drone
+            self._payload_pos_w = quad_pos_w + self._payload_offset
 
             desired_pos_b, _ = subtract_frame_transforms(
                 quad_pos_w, quad_quat_w, self._desired_pos_w
@@ -368,6 +379,10 @@ class BetaflightEnv(DirectRLEnv):
             # Formation center tracking to goal
             stack_pos = torch.stack(pos_w, dim=1)             # [N_env, N, 3]
             center_pos_w = stack_pos.mean(dim=1)              # [N_env, 3]
+
+            # Keep payload updated here too for robustness
+            self._payload_pos_w = center_pos_w + self._payload_offset
+
             distance_to_goal = torch.linalg.norm(self._desired_pos_w - center_pos_w, dim=1)
             distance_reward = 1.0 - torch.tanh(distance_to_goal / self.cfg.distance_normalizer)
             tracking = distance_reward * self.cfg.distance_to_goal_reward_scale * self.step_dt
@@ -600,6 +615,9 @@ class BetaflightEnv(DirectRLEnv):
                 base_center = torch.zeros((len(env_ids), 3), device=self.device)
             base_center = base_center + self._terrain.env_origins[env_ids]
 
+            # --- Initialize virtual payload under the formation center ---
+            self._payload_pos_w[env_ids] = base_center + self._payload_offset
+
             # Regular N-gon with side length = formation_target_distance at z=0.5
             N = self._num_robots
             if N == 1:
@@ -632,6 +650,10 @@ class BetaflightEnv(DirectRLEnv):
             if self._custom_start is not None:
                 default_root_state[:, :3] = self._custom_start.expand(len(env_ids), -1)
             default_root_state[:, :3] += self._terrain.env_origins[env_ids]
+
+            # Initialize payload under the single drone
+            self._payload_pos_w[env_ids] = default_root_state[:, :3] + self._payload_offset
+
             self._robot.write_root_pose_to_sim(default_root_state[:, :7], env_ids)
             self._robot.write_root_velocity_to_sim(default_root_state[:, 7:], env_ids)
             self._robot.write_joint_state_to_sim(joint_pos, joint_vel, None, env_ids)
@@ -644,13 +666,31 @@ class BetaflightEnv(DirectRLEnv):
                 marker_cfg.markers["cuboid"].size = (0.02, 0.02, 0.02)
                 marker_cfg.prim_path = "/Visuals/Command/goal_position"
                 self.goal_pos_visualizer = VisualizationMarkers(marker_cfg)
+            # --- Payload marker (green square) ---
+            if not hasattr(self, "payload_visualizer"):
+                payload_cfg = copy.deepcopy(CUBOID_MARKER_CFG)
+                payload_cfg.markers["cuboid"].size = (0.08, 0.08, 0.02)  # flat square
+                # Try both keys to be robust across versions
+                try:
+                    payload_cfg.markers["cuboid"].visual_material.diffuse_color = (0.25, 0.0, 0.5)
+                except Exception:
+                    pass
+                payload_cfg.prim_path = "/Visuals/Command/virtual_payload"
+                self.payload_visualizer = VisualizationMarkers(payload_cfg)
+
             self.goal_pos_visualizer.set_visibility(True)
+            self.payload_visualizer.set_visibility(True)
         else:
             if hasattr(self, "goal_pos_visualizer"):
                 self.goal_pos_visualizer.set_visibility(False)
+            if hasattr(self, "payload_visualizer"):
+                self.payload_visualizer.set_visibility(False)
 
     def _debug_vis_callback(self, event):
         self.goal_pos_visualizer.visualize(self._desired_pos_w)
+        # Visualize virtual payload under formation center
+        if hasattr(self, "payload_visualizer"):
+            self.payload_visualizer.visualize(self._payload_pos_w)
 
     # ---------------------------- Utilities ------------------------------
     def set_goal_sequence(self, goal_list: list[torch.Tensor]):

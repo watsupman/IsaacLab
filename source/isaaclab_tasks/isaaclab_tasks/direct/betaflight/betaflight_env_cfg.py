@@ -121,6 +121,47 @@ DRONE_WITH_PAYLOAD_CFG = ArticulationCfg(
     },
 )
 
+# Define custom drone with payload configuration
+ROPE_DRONE_WITH_PAYLOAD_CFG = ArticulationCfg(
+    prim_path="{ENV_REGEX_NS}/Robot",
+    spawn=sim_utils.UsdFileCfg(
+        usd_path=os.path.join(os.path.dirname(__file__), "rope_drone_with_payload.usda"),
+        rigid_props=sim_utils.RigidBodyPropertiesCfg(
+            disable_gravity=False,
+            max_depenetration_velocity=10.0,
+            enable_gyroscopic_forces=True,
+        ),
+        articulation_props=sim_utils.ArticulationRootPropertiesCfg(
+            fix_root_link=False,
+            enabled_self_collisions=False,
+            solver_position_iteration_count=4,
+            solver_velocity_iteration_count=0,
+            sleep_threshold=0.005,
+            stabilization_threshold=0.001,
+        ),
+        copy_from_source=False,
+    ),
+    init_state=ArticulationCfg.InitialStateCfg(
+        pos=(0.0, 0.0, 0.5),
+        joint_pos={
+            ".*": 0.0,
+        },
+        joint_vel={
+            "m1_joint": 200.0,
+            "m2_joint": -200.0,
+            "m3_joint": 200.0,
+            "m4_joint": -200.0,
+        },
+    ),
+    actuators={
+        "dummy": ImplicitActuatorCfg(
+            joint_names_expr=[".*"],
+            stiffness=0.0,
+            damping=0.0,
+        ),
+    },
+)
+
 FIXED_DRONE_WITH_PAYLOAD_CFG = ArticulationCfg(
     prim_path="{ENV_REGEX_NS}/Robot",
     spawn=sim_utils.UsdFileCfg(
@@ -188,6 +229,7 @@ class BetaflightEnvCfg(DirectRLEnvCfg):
 
     payload = True
     fixed = False
+    rope = False
 
     # === Thrust constant randomization (training-only) ===
     # When is_training=True, each env samples a per-episode thrust constant from a
@@ -199,11 +241,11 @@ class BetaflightEnvCfg(DirectRLEnvCfg):
     thrust_constant_gauss_std: float = 1.5  # ~95% within [42, 45] before clamping
     thrust_constant_clip_min: float = 40.0
     thrust_constant_clip_max: float = 45.0
-    eval_thrust_constant: float = 42.0
+    eval_thrust_constant: float = 38.0
 
     # env
-    episode_length_s = 10.0
-    decimation = 2
+    episode_length_s = 100.0
+    decimation = 1
     action_space = 4
     if payload:
         observation_space = 25
@@ -251,6 +293,13 @@ class BetaflightEnvCfg(DirectRLEnvCfg):
                 spawn=FIXED_DRONE_WITH_PAYLOAD_CFG.spawn,
                 init_state=DRONE_WITH_PAYLOAD_CFG.init_state,
                 actuators=DRONE_WITH_PAYLOAD_CFG.actuators,
+            )
+        elif rope:
+            robot: ArticulationCfg = ArticulationCfg(
+                prim_path="/World/envs/env_.*/Robot",
+                spawn=ROPE_DRONE_WITH_PAYLOAD_CFG.spawn,
+                init_state=ROPE_DRONE_WITH_PAYLOAD_CFG.init_state,
+                actuators=ROPE_DRONE_WITH_PAYLOAD_CFG.actuators,
             )
         else:
             robot: ArticulationCfg = ArticulationCfg(
@@ -303,7 +352,7 @@ class BetaflightEnvCfg(DirectRLEnvCfg):
     else:
         lin_vel_reward_scale: float = -0.005
         ang_vel_reward_scale: float = -0.02
-        distance_to_goal_reward_scale: float = 11.0
+        distance_to_goal_reward_scale: float = 8.0
         orientation_penalty_scale: float = -0.2
         # Payload swing reward (disabled when payload=False)
         payload_swing_reward_enable: bool = False

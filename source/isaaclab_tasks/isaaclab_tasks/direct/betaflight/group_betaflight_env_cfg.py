@@ -18,7 +18,7 @@ from isaaclab.markers import CUBOID_MARKER_CFG  # isort: skip
 # Forward declaration to avoid circular import
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
-    from .group_betaflight_env import BetaflightEnv
+    from .group_betaflight_env_with_payload import BetaflightEnv
 
 # ---------- Base drone configs ----------
 CUSTOM_DRONE_CFG = ArticulationCfg(
@@ -70,7 +70,7 @@ class BetaflightEnvCfg(DirectRLEnvCfg):
     """
 
     # --------- Modes ---------
-    num_robots: int = 2
+    num_robots: int = 3
     group_mode: bool = True          # kept for backward-compat; ignored at runtime if num_robots is set
     is_training: bool = False        # False for eval/inference
 
@@ -83,7 +83,7 @@ class BetaflightEnvCfg(DirectRLEnvCfg):
     eval_thrust_constant: float = 38.0
 
     # --------- Env timing / spaces ---------
-    episode_length_s = 10.0
+    episode_length_s = 100.0
     decimation = 2
     action_space = 4 * num_robots          # updated by env at runtime as well
     # Observation dims:
@@ -149,7 +149,7 @@ class BetaflightEnvCfg(DirectRLEnvCfg):
     distance_threshold: float = 0.2
     lin_vel_reward_scale: float = -0.005
     ang_vel_reward_scale: float = -0.02
-    distance_to_goal_reward_scale: float = 11.0
+    distance_to_goal_reward_scale: float = 10.0
     orientation_penalty_scale: float = -0.2
     thrust_smoothness_penalty_scale: float = -0.2
     roll_smoothness_penalty_scale: float   = -0.1
@@ -171,18 +171,17 @@ class BetaflightEnvCfg(DirectRLEnvCfg):
 
     # --------- Formation specifics (group mode) ---------
     neighbors_k: int = 2               # number of nearest neighbors to include per drone in observations
-    # formation_target_distance: float = 0.56    # side length of the regular N-gon (adjacent drones)
     min_separation: float = 0.15             # hard safety radius
     collision_penalty_scale: float =  -8.0
     formation_target_distance: float = 0.56
 
     if num_robots == 3:
-        distance_to_goal_reward_scale: float = 10.0
-        z_alignment_penalty_scale: float = -1.5
-        formation_separation_penalty_scale: float = -7.0
+        distance_to_goal_reward_scale: float = 11.0
+        z_alignment_penalty_scale: float = -2.5
+        formation_separation_penalty_scale: float = -8.0
         ring_radial_penalty_scale: float = -3.5
         neighbor_velocity_penalty_scale: float = -0.5
-        center_velocity_penalty_scale: float = -0.2
+        center_velocity_penalty_scale: float = -0.02
     else:
         formation_separation_penalty_scale: float = -2.0
         ring_radial_penalty_scale: float = -1.5
@@ -196,7 +195,11 @@ class BetaflightEnvCfg(DirectRLEnvCfg):
     max_separation_penalty_scale: float = -50.0  # strong negative when violated (applied with step_dt)
     terminate_on_max_separation_exceeded: bool = True  # set True to end the episode immediately
 
-
     # --------- NEW: Collision termination ---------
     # If any pair of drones comes closer than ``min_separation``, end the episode.
     terminate_on_collision: bool = True
+
+    # --------- VIRTUAL PAYLOAD ---------
+    # World-frame offset from the formation center to the virtual payload (meters).
+    # Default places it 0.30 m below the center.
+    payload_offset_z: float = -0.30

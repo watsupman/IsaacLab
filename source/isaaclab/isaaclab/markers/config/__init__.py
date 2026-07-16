@@ -130,3 +130,13 @@ POSITION_GOAL_MARKER_CFG = VisualizationMarkersCfg(
     }
 )
 """Configuration for the end-effector tracking marker."""
+
+PAYLOAD_SPHERE_MARKER_CFG = VisualizationMarkersCfg(
+    markers={
+        "sphere": sim_utils.SphereCfg(
+            radius=0.04,
+            visual_material=sim_utils.PreviewSurfaceCfg(diffuse_color=(0.1, 0.6, 1.0)),
+        ),
+    }
+)
+

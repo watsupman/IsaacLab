@@ -340,7 +340,7 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, expe
     # Cache observation dimension for CSV header (matches main.py dynamic header)
     if args_cli.log_data:
         try:
-            obs_dim_for_csv = int(obs.shape[-1]) + (3 if (hasattr(env.unwrapped, "_robots") or bool(getattr(env.unwrapped, "group_mode", False))) else 0)
+            obs_dim_for_csv = int(obs.shape[-1])
         except Exception:
             obs_dim_for_csv = None
 
@@ -446,41 +446,13 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, expe
                     obs_list = current_obs.flatten().tolist()
                 except Exception:
                     obs_list = []
-            # Insert center world pos after center_to_goal_b for logging only (group mode)
-
-            try:
-
-                _is_group = bool(getattr(env.unwrapped, "group_mode", False)) or hasattr(env.unwrapped, "_robots")
-
-            except Exception:
-
-                _is_group = False
-
-            obs_list_logged = list(obs_list)
-
-            if _is_group and len(obs_list_logged) >= 5:
-
-                # last 5 are [center_to_goal_b(3), heading(2)] per env layout
-
-                pre = obs_list_logged[:-5]
-
-                ctg = obs_list_logged[-5:-2]
-
-                head = obs_list_logged[-2:]
-
-                # use current center world position (px,py,pz) computed above
-
-                obs_list_logged = pre + ctg + [float(px), float(py), float(pz)] + head
-
-            
-
             # actions -> roll, pitch, force, yaw mapping like main.py
             a = _action_vector_from(current_actions)
             force = float(a[0]) if len(a) > 0 else 0.0
             roll  = float(a[1]) if len(a) > 1 else 0.0
             pitch = float(a[2]) if len(a) > 2 else 0.0
             yaw   = float(a[3]) if len(a) > 3 else 0.0
-            row = [int(sec), int(nsec), int(0), float(px), float(py), float(pz), float(vx), float(vy), float(vz)] + _extract_all_world_positions() + [float(x) for x in obs_list_logged] + [roll, pitch, force, yaw]
+            row = [int(sec), int(nsec), int(0), float(px), float(py), float(pz), float(vx), float(vy), float(vz)] + _extract_all_world_positions() + [float(x) for x in obs_list] + [roll, pitch, force, yaw]
             payload_log.append(row)
         except Exception:
             pass
@@ -524,31 +496,13 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, expe
 
         # print observation
         if timestep < printLimit:
-            # Print actions reordered as [roll, pitch, force, yaw] for readability
-            try:
-                if isinstance(actions, torch.Tensor):
-                    _a = actions.view(-1, 4)[:, [1, 2, 0, 3]]  # roll, pitch, force, yaw
-                    print(f"Action (roll, pitch, force, yaw): {_a.detach().cpu().numpy().round(3)}")
-                elif isinstance(actions, dict):
-                    # Multi-agent case: reorder per agent if tensor, else print raw
-                    _disp = {}
-                    for k, v in actions.items():
-                        if isinstance(v, torch.Tensor) and v.numel() == 4:
-                            _disp[k] = v.view(-1, 4)[:, [1, 2, 0, 3]].detach().cpu().numpy().round(3)
-                        else:
-                            _disp[k] = v
-                    print(f"Action (roll, pitch, force, yaw): {_disp}")
-                else:
-                    print(f"Action (roll, pitch, force, yaw): {actions}")
-            except Exception:
-                # Fallback to original order if anything goes wrong
-                print(f"Action: {actions}")
+            print(f"Action: {actions.detach().cpu().numpy().round(3)}")
             # logging handled by _log_step_row; keep print only
         
 
         timestep += 1
         # exit the play loop after 200 steps
-        if timestep >= 1600:
+        if timestep >= 800:
             break
 
         # time delay for real-time evaluation
@@ -579,12 +533,11 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, expe
 
         def _named_obs_header_dynamic():
             """Return human-readable observation names based on BetaflightEnv layout.
-            Single-drone (19D base; 25D with payload=True):
-              Base (19): [v_b(3), w_b(3), quat wxyz(4), pos_err_b(3), heading(2), prev_actions(4)]
-              +Payload (6): [payload_rel_pos_b(3), payload_rel_vel_b(3)]
+            Single-drone (19D):
+              [v_b(3), w_b(3), quat wxyz(4), pos_err_b(3), heading(2), prev_actions(4)]
             Group (N drones):
               For each robot i: [v_b(3), w_b(3), quat wxyz(4), prev_actions(4), K neighbors * (dx_b, dy_b, dz)]
-              Then: [center_to_goal_b(3), center_p_w(3), heading(2)]
+              Then: [center_to_goal_b(3), heading(2)]
             """
             try:
                 unwrapped = env.unwrapped
@@ -592,17 +545,9 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, expe
             except Exception:
                 group = False
 
-            # Detect payload availability in the current env (based on env attributes / cfg)
-            has_payload = False
-            try:
-                unwrapped = env.unwrapped
-                has_payload = (getattr(unwrapped, "_payload_id", None) is not None) or bool(getattr(unwrapped.cfg, "payload", False))
-            except Exception:
-                pass
-
             if not group:
                 # 19-D single-drone header
-                names = [
+                return [
                     "v_b_x","v_b_y","v_b_z",
                     "w_b_x","w_b_y","w_b_z",
                     "quat_w","quat_x","quat_y","quat_z",
@@ -610,13 +555,6 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, expe
                     "heading_sin","heading_cos",
                     "prev_force","prev_roll","prev_pitch","prev_yaw",
                 ]
-                # If the environment includes a payload, append the expected 6D payload terms
-                if has_payload:
-                    names += [
-                        "payload_rel_pos_b_x","payload_rel_pos_b_y","payload_rel_pos_b_z",
-                        "payload_rel_vel_b_x","payload_rel_vel_b_y","payload_rel_vel_b_z",
-                    ]
-                return names
 
             # Group-mode dynamic header
             try:
@@ -638,12 +576,9 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, expe
                 ]
                 for j in range(K):
                     names += [f"r{i}_kn{j}_dx_b", f"r{i}_kn{j}_dy_b", f"r{i}_kn{j}_dz"]
-            names += ["center_to_goal_b_x","center_to_goal_b_y","center_to_goal_b_z","center_p_w_x","center_p_w_y","center_p_w_z","heading_sin","heading_cos"]
-
-            # For group mode, we currently do not append payload terms because the observation
-            # layout for multi-robot + payload is not defined in betaflight_env. If needed,
-            # extend here once the group-mode observation is updated to include payload.
+            names += ["center_to_goal_b_x","center_to_goal_b_y","center_to_goal_b_z","heading_sin","heading_cos"]
             return names
+
         names = _named_obs_header_dynamic()
         # Fallback to generic names if a mismatch is detected
         if len(names) != _obs_dim:
